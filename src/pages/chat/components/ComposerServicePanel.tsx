@@ -75,22 +75,31 @@ export default function ComposerServicePanel({
 
   const title = isImages ? "Create image" : isVideo ? "Create video" : "Create slides";
   const TitleIcon = isImages ? ImageIcon : isVideo ? VideoIcon : Presentation;
+  const accent = isImages ? "hsl(var(--brand-mint))" : isVideo ? "var(--mode-video)" : "var(--mode-slides)";
   const template = isSlides ? findSlidesTemplate(slidesTemplate || "") : null;
 
   return (
     <div className="pt-2 pb-1.5 space-y-2">
       <div className="flex items-center justify-between gap-2 px-0.5">
-        <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-foreground/60">
-          <TitleIcon className="w-3.5 h-3.5" strokeWidth={2.4} />
-          {title}
-        </span>
+        <div
+          data-service-indicator="true"
+          className="inline-flex h-8 items-center gap-2 rounded-full border border-white/[0.14] bg-white/[0.08] px-3 text-[12px] font-semibold text-foreground"
+        >
+          <span
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full"
+            style={{ background: `color-mix(in srgb, ${accent} 18%, transparent)` }}
+          >
+            <TitleIcon className="h-3.5 w-3.5" strokeWidth={2.4} />
+          </span>
+          <span className="leading-none">{title}</span>
+        </div>
         <button
           type="button"
           onClick={onClear}
           aria-label={`Close ${title}`}
-          className="inline-flex items-center justify-center w-6 h-6 rounded-full text-foreground/50 hover:text-foreground hover:bg-foreground/10 transition"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-foreground/60 transition hover:bg-white/[0.1] hover:text-foreground active:scale-95"
         >
-          <X className="w-3.5 h-3.5" strokeWidth={2.4} />
+          <X className="h-3.5 w-3.5" strokeWidth={2.4} />
         </button>
       </div>
 

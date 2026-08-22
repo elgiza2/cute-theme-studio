@@ -9,7 +9,7 @@ import { t as uiT, useUserLang } from "@/lib/authI18n";
 import { UpgradePlanButton } from "@/components/billing/UpgradePlanButton";
 
 interface DesktopChatHeaderProps {
-  chatMode: "normal" | "learning" | "shopping" | "images" | "video" | "music" | "slides" | "slides-images" | "deep-research" | "operator" | "code";
+  chatMode: "normal" | "learning" | "images" | "video" | "music" | "slides" | "slides-images" | "deep-research" | "operator" | "code";
   hasConversation: boolean;
   userPlan: string | null;
   navigate: (path: string) => void;

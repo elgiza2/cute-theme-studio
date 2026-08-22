@@ -3,11 +3,10 @@ import { useState, type ReactNode } from "react";
 import ComposerAttachments from "./ComposerAttachments";
 import { RemoteAiBusyBanner } from "./RemoteAiBusyBanner";
 import { MentionDropdown } from "./MentionDropdown";
-import { ComposerMobileModeBar } from "./ComposerMobileModeBar";
 import { ComposerAnimatedInput } from "./ComposerAnimatedInput";
 import { ActiveServicePill } from "./ActiveServicePill";
 import ComposerServicePanel from "./ComposerServicePanel";
-import StarterCards from "./StarterCards";
+import StarterCards, { type StarterServiceId } from "./StarterCards";
 
 import type { AttachedFile } from "../hooks/useAttachments";
 
@@ -30,7 +29,6 @@ interface ChatComposerSectionProps {
   onlineUsers: any;
   colorForUser: (id?: string | null) => any;
   insertMention: (name: string) => void;
-  composerMobileModeBarProps: Record<string, any>;
   composerAnimatedInputProps: Record<string, any>;
   navigate: any;
   desktopModeChipsProps: Record<string, any>;
@@ -64,7 +62,6 @@ export function ChatComposerSection(props: ChatComposerSectionProps) {
     onlineUsers,
     colorForUser,
     insertMention,
-    composerMobileModeBarProps,
     composerAnimatedInputProps,
     navigate,
     desktopModeChipsProps,
@@ -81,6 +78,11 @@ export function ChatComposerSection(props: ChatComposerSectionProps) {
   const [modesShown, setModesShown] = useState(true);
   const [, setInputFocused] = useState(false);
   const d = desktopModeChipsProps as any;
+  const mediaPanelMode =
+    d.chatMode === "images" ||
+    d.chatMode === "video" ||
+    d.chatMode === "slides" ||
+    d.chatMode === "slides-images";
   const hasActiveService = Boolean(d.selectedAgent || (d.chatMode && d.chatMode !== "normal"));
 
   // Hide chips whenever a service is active; also hide on mobile once the
@@ -119,11 +121,6 @@ export function ChatComposerSection(props: ChatComposerSectionProps) {
               />
             )}
 
-            <ComposerMobileModeBar
-              {...(composerMobileModeBarProps as any)}
-              forceHidden={!effectiveModesShown}
-            />
-
             {isDesktopLanding && desktopGreeting ? (
               <div className="hidden md:flex justify-center mb-8">{desktopGreeting}</div>
             ) : null}
@@ -135,6 +132,29 @@ export function ChatComposerSection(props: ChatComposerSectionProps) {
                 className="mb-3"
                 onPick={(prompt) => {
                   (composerAnimatedInputProps as any).setInput?.(prompt);
+                }}
+                onChooseService={(service: StarterServiceId) => {
+                  const modeByService: Partial<Record<StarterServiceId, any>> = {
+                    research: "deep-research",
+                    image: "images",
+                    video: "video",
+                    slides: "slides",
+                    code: "code",
+                    learning: "learning",
+                    audio: "music",
+                  };
+                  const mode = modeByService[service];
+                  if (mode) {
+                    d.handleModeChange(mode);
+                    return;
+                  }
+                  if (service === "skill") {
+                    navigate("/settings/skills/new");
+                  } else if (service === "mcp") {
+                    navigate("/settings/mcp");
+                  } else if (service === "integrations") {
+                    navigate("/chat?integrations=1");
+                  }
                 }}
               />
             ) : null}
@@ -153,11 +173,7 @@ export function ChatComposerSection(props: ChatComposerSectionProps) {
                 chatContext
                 onInputFocusChange={setInputFocused}
                 activeServiceHeader={
-                  d.chatMode === "images" ||
-                  d.chatMode === "video" ||
-                  d.chatMode === "slides" ||
-                  d.chatMode === "slides-images" ||
-                  attachedFiles.length > 0 ? (
+                  mediaPanelMode || attachedFiles.length > 0 ? (
                     <>
                       <ComposerServicePanel
                         chatMode={d.chatMode}
@@ -180,7 +196,7 @@ export function ChatComposerSection(props: ChatComposerSectionProps) {
                   ) : null
                 }
                 activeServiceSlot={
-                  hasActiveService ? (
+                  hasActiveService && !mediaPanelMode ? (
                     <ActiveServicePill
                       chatMode={d.chatMode}
                       selectedAgent={d.selectedAgent}

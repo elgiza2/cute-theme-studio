@@ -46,6 +46,7 @@ export interface Message {
   mode?:
     | "normal"
     | "learning"
+    /** Legacy metadata only; never selectable as a current chat mode. */
     | "shopping"
     | "deep-research"
     | "slides"
@@ -145,7 +146,6 @@ export const EMPTY_REACTIONS: { id: string; emoji: string; user_id: string }[] =
 export type ChatMode =
   | "normal"
   | "learning"
-  | "shopping"
   | "deep-research"
   | "slides"
   | "slides-images"
@@ -180,10 +180,6 @@ export const MODE_PROMPTS: Record<ChatMode, string> = {
     LANG_RULE +
     ASK_TOOL_RULE +
     " You are in Learning Mode. Explain everything step by step with examples, analogies, and clear breakdowns. Make complex topics easy to understand. Use bullet points, numbered steps, and structured format.",
-  shopping:
-    LANG_RULE +
-    ASK_TOOL_RULE +
-    " You are in Shopping Mode. Help the user find the best products, compare prices, suggest alternatives, and provide purchase recommendations. Include pros/cons when comparing items.",
   "deep-research": LANG_RULE,
   slides: LANG_RULE,
   "slides-images": LANG_RULE,

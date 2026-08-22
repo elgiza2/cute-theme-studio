@@ -21,12 +21,6 @@ export const SEO_BY_MODE: Record<ChatMode, ChatSeoMeta> = {
       "Learn anything step-by-step with an AI tutor. Adaptive explanations, practice questions, study timers and music — completely free.",
     path: "/chat?mode=learning",
   },
-  shopping: {
-    title: "AI Shopping Assistant — Compare & Find Better Prices",
-    description:
-      "Ask anything, compare real products across stores, see live prices and find the best deal with AI shopping search.",
-    path: "/chat?mode=shopping",
-  },
   "deep-research": {
     title: "Deep Research — Multi-Step AI Research with Real Sources",
     description:

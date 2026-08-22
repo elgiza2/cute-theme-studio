@@ -120,7 +120,7 @@ export default function IntegrationDetail({ item, connected, busy, onBack, onTog
           className="inline-flex h-12 w-full items-center justify-center rounded-[16px] bg-foreground text-[14.5px] font-semibold text-background transition-opacity active:opacity-80"
           style={{ border: 0 }}
         >
-          {busy ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : connected ? "Try it" : "Connect"}
+          {busy ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : connected ? "Disconnect" : "Connect"}
         </button>
       </div>
     </div>
@@ -146,7 +146,7 @@ function typeLabel(t: Integration["type"]) {
     case "notification":
       return "Notifications";
     case "service":
-      return "MCP";
+      return "Service";
     default:
       return "App";
   }

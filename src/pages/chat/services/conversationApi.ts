@@ -95,8 +95,6 @@ function modeToDbMode(chatMode: ChatMode | string): string {
       return "research";
     case "learning":
       return "learning";
-    case "shopping":
-      return "shopping";
     case "slides":
     case "slides-images":
       return "slides";

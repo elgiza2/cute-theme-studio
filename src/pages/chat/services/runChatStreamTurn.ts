@@ -23,6 +23,29 @@ function detectSiteBuildId(text: string): string | undefined {
   return m?.[1];
 }
 
+function speakVoiceReply(text: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window) || !text.trim()) return;
+  const spoken = text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/[\*_`>#|]/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .slice(0, 12000);
+  if (!spoken) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(spoken);
+    utterance.lang = /[\u0600-\u06FF]/.test(spoken) ? "ar-SA" : "en-US";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    // Browser speech is an enhancement; never fail the chat turn if unavailable.
+  }
+}
+
 function readLearnAnswerField(text: string, key: string): string | undefined {
   const quoted = text.match(new RegExp(`${key}="([^"]*)"`));
   if (quoted) return quoted[1];
@@ -1103,7 +1126,7 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
           payload: { user_id: chatUserId, busy: false },
         });
       }
-      if (!assistantContent && searchImages.length === 0 && streamedProducts.length === 0 && !hasGeneratedVideo) {
+      if (!assistantContent && searchImages.length === 0 && streamedProducts.length === 0 && generatedAudios.length === 0 && !hasGeneratedVideo) {
         assistantContent =
           "There was a delay generating the response, but your request was received. Try sending it again or make it shorter.";
         setMessages((prev) => {
@@ -1192,19 +1215,21 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
             id: aId || last.id,
             images: searchImages.length > 0 ? searchImages : last.images,
             videos: generatedVideos.length > 0 ? generatedVideos : last.videos,
+            audios: generatedAudios.length > 0 ? generatedAudios : (last as any).audios,
             products: streamedProducts.length > 0 ? streamedProducts : last.products,
             siteBuild: siteIdA ? { siteId: siteIdA } : last.siteBuild,
           };
           return next;
         });
+        if (selectedAgent?.id === "voice" && assistantContent.trim()) {
+          speakVoiceReply(assistantContent);
+        }
         const dbMode =
           (chatMode as string) === "deep-research"
             ? "research"
             : chatMode === "learning"
               ? "learning"
-              : chatMode === "shopping"
-                ? "shopping"
-                : chatMode === "video"
+              : chatMode === "video"
                   ? "videos"
                   : "chat";
         await supabase

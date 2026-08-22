@@ -85,7 +85,6 @@ import { useMessageDerivations } from "./hooks/useMessageDerivations";
 import { useIntegrationsFilter } from "./hooks/useIntegrationsFilter";
 import { useChatCancel } from "./hooks/useChatCancel";
 import { useChatNewChat, useChatModeActions } from "./hooks/useChatLifecycleActions";
-import { useMobileModeBarChange } from "./hooks/useMobileModeBarChange";
 import { useConnectIntegration } from "./hooks/useConnectIntegration";
 import { useMemberColors } from "./hooks/useMemberColors";
 
@@ -138,9 +137,6 @@ const preloadPlusMenu = () => {
 // mount when the user opens a dialog, service panel, or intro; otherwise
 // nothing is fetched. Idle preload is done once for the intro on the first
 // paint of a fresh chat so it feels instant when it does open.
-const MobileServicePanelRenderer = lazy(() =>
-  import("./components/MobileServicePanelRenderer").then((m) => ({ default: m.MobileServicePanelRenderer })),
-);
 const ChatDialogs = lazy(() =>
   import("./components/ChatDialogs").then((m) => ({ default: m.ChatDialogs })),
 );
@@ -1255,7 +1251,8 @@ const ChatPage = () => {
       const m = (conv as any).mode as string | undefined;
       if (m === "research") setChatMode("deep-research");
       else if (m === "learning") setChatMode("learning");
-      else if (m === "shopping") setChatMode("shopping");
+      // Shopping is retired; historical conversations reopen in normal chat.
+      else if (m === "shopping") setChatMode("normal");
       else if (m === "slides") setChatMode("slides");
       else setChatMode("normal");
     }
@@ -2497,14 +2494,6 @@ const ChatPage = () => {
     setMembers,
   });
 
-  const composerModeBarChange = useMobileModeBarChange({
-    selectedAgent,
-    setSelectedAgent,
-    setSelectedModel,
-    setChatMode,
-    handleModeChange,
-    tryActivateMegsyOs,
-  });
 
   const openInviteFlow = useCallback(async () => {
     if (!conversationId) {
@@ -2843,48 +2832,6 @@ const ChatPage = () => {
 
   const seoMeta = getSeoMeta(chatMode);
 
-  const renderMobileServicePanel = () => (
-    <Suspense fallback={null}>
-      <MobileServicePanelRenderer
-        selectedAgent={selectedAgent}
-        chatMode={chatMode}
-        setChatMode={setChatMode}
-        setSelectedAgent={setSelectedAgent}
-        setSelectedModel={setSelectedModel}
-        slidesTemplate={slidesTemplate}
-        setSlidesPickerOpen={setSlidesPickerOpen}
-        videoStartEndMode={videoStartEndMode}
-        setVideoStartEndMode={setVideoStartEndMode}
-        startFrameUrl={startFrameUrl}
-        endFrameUrl={endFrameUrl}
-        setStartFrameUrl={setStartFrameUrl}
-        setEndFrameUrl={setEndFrameUrl}
-        frameUploading={frameUploading}
-        setFrameUploading={setFrameUploading}
-        uploadFrame={uploadFrame}
-        setVideoDurationSec={setVideoDurationSec}
-        tierMenuOpen={tierMenuOpen}
-        setTierMenuOpen={setTierMenuOpen}
-        selectedModel={selectedModel}
-        megsyTier={megsyTier}
-        setMegsyTier={setMegsyTier}
-        userPlan={userPlan}
-        mediaModel={mediaModel}
-        setMediaModel={setMediaModel}
-        researchDepth={researchDepth}
-        setResearchDepth={setResearchDepth}
-      />
-    </Suspense>
-  );
-
-  // All previously-full-panel modes (images, video, slides, deep-research,
-  // learning, docs) now render only the single ActiveServicePill strip inside
-  // the composer, so the mobile landing should keep showing the normal
-  // MobileModeBar chip strip. `renderMobileServicePanel` returns null for
-  // every one of them — treating `hasMobileServicePanel` as always false here
-  // prevents the landing from swapping the chip strip for an empty slot.
-  const hasMobileServicePanel = false;
-
   return (
     <AuiProvider
       key={conversationId ?? "new"}
@@ -2955,9 +2902,7 @@ const ChatPage = () => {
                 ? "learning"
                 : chatMode === "deep-research"
                   ? "research"
-                  : chatMode === "shopping"
-                    ? "shopping"
-                    : chatMode === "slides" || chatMode === "slides-images"
+                  : chatMode === "slides" || chatMode === "slides-images"
                       ? "slides"
                       : chatMode === "images"
                         ? "images"
@@ -2987,9 +2932,7 @@ const ChatPage = () => {
                 ? "learning"
                 : chatMode === "deep-research"
                   ? "research"
-                  : chatMode === "shopping"
-                    ? "shopping"
-                    : chatMode === "slides" || chatMode === "slides-images"
+                  : chatMode === "slides" || chatMode === "slides-images"
                       ? "slides"
                       : chatMode === "images"
                         ? "images"
@@ -3174,26 +3117,16 @@ const ChatPage = () => {
             mobileLandingProps={{
               input,
               setInput,
-              handleSend,
               isLoading,
               activeResearchJobId,
-              selectedModel,
-              setSelectedModel,
-              megsyTier,
-              userPlan,
-              userName,
-              plusMenuOpen,
-              setPlusMenuOpen,
-              setPlusView,
-              hasMobileServicePanel,
-              renderMobileServicePanel,
               chatMode,
               selectedAgent,
-              setSelectedAgent,
-              setChatMode,
               handleModeChange,
-              tryActivateMegsyOs,
-              setSlidesPickerOpen,
+              onOpenService: (service) => {
+                if (service === "skill") navigate("/settings/skills/new");
+                else if (service === "mcp") navigate("/settings/mcp");
+                else if (service === "integrations") navigate("/chat?integrations=1");
+              },
             }}
             messagesListProps={{
               messages,
@@ -3329,14 +3262,6 @@ const ChatPage = () => {
                 />
               </Suspense>
             }
-            composerMobileModeBarProps={{
-              selectedAgent,
-              chatMode,
-              editingIndex,
-              hasMobileServicePanel,
-              renderMobileServicePanel,
-              composerModeBarChange,
-            }}
             composerAnimatedInputProps={{
               input,
               setInput,

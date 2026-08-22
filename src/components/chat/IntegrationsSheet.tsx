@@ -9,6 +9,7 @@ import {
   startIntegrationConnection,
   disconnectIntegration,
   waitForConnectionRefresh,
+  isIntegrationSupported,
 } from "@/lib/integrationBackend";
 import IntegrationRow from "./integrations/IntegrationRow";
 import IntegrationDetail from "./integrations/IntegrationDetail";
@@ -35,6 +36,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 /** Connectors needing an API key / manual credentials instead of OAuth. */
 const needsApiKey = (i: Integration) => i.type === "service" || i.type === "notification";
+const SUPPORTED_CATALOG = CATALOG.filter(isIntegrationSupported);
 
 const SLIDE = { duration: 0.22, ease: [0.32, 0.72, 0, 1] as const };
 
@@ -52,7 +54,7 @@ export default function IntegrationsSheet({ open, onOpenChange }: Props) {
 
   const refresh = async () => {
     try {
-      const snap = await loadIntegrationConnections(CATALOG);
+      const snap = await loadIntegrationConnections(SUPPORTED_CATALOG);
       setConnected(snap.connectedApps || {});
       return snap.connectedApps || {};
     } catch {
@@ -75,7 +77,7 @@ export default function IntegrationsSheet({ open, onOpenChange }: Props) {
   }, [open]);
 
   const list = useMemo(() => {
-    const base = tab === "api" ? CATALOG.filter(needsApiKey) : CATALOG;
+    const base = tab === "api" ? SUPPORTED_CATALOG.filter(needsApiKey) : SUPPORTED_CATALOG;
     const q = query.trim().toLowerCase();
     if (!q) return base;
     return base.filter(

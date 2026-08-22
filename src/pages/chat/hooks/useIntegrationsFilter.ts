@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { integrations as ALL_INTEGRATIONS } from "@/lib/integrationsData";
+import { isIntegrationSupported } from "@/lib/integrationBackend";
 
 /**
  * Derives the integration browser's category list and filtered list from the
@@ -8,13 +9,14 @@ import { integrations as ALL_INTEGRATIONS } from "@/lib/integrationsData";
 export function useIntegrationsFilter(integrationsQuery: string, integrationsCategory: string) {
   const integrationCategories = useMemo(() => {
     const set = new Set<string>(["All"]);
-    ALL_INTEGRATIONS.forEach((i) => set.add(i.category));
+    ALL_INTEGRATIONS.filter(isIntegrationSupported).forEach((i) => set.add(i.category));
     return Array.from(set);
   }, []);
 
   const filteredIntegrations = useMemo(() => {
     const q = integrationsQuery.trim().toLowerCase();
     return ALL_INTEGRATIONS.filter((i) => {
+      if (!isIntegrationSupported(i)) return false;
       if (integrationsCategory !== "All" && i.category !== integrationsCategory) return false;
       if (!q) return true;
       return (

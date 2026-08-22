@@ -12,6 +12,18 @@ export interface IntegrationConnectionSnapshot {
 const accountSlug = (account: any) =>
   account?.app_slug ?? account?.app?.name_slug ?? account?.app?.slug ?? account?.appSlug;
 
+/**
+ * Keep the catalog honest: only integrations with a real connect/disconnect
+ * path are rendered as actionable. Provider configuration is still checked at
+ * runtime by the connector functions, but unsupported catalog rows should not
+ * offer a dead button in the first place.
+ */
+export function isIntegrationSupported(integration: Integration): boolean {
+  if (integration.app === "email") return true;
+  if (integration.type === "oauth" && integration.app === "github") return true;
+  return integration.type === "pipedream" && Boolean(integration.pipedreamSlug);
+}
+
 export async function requireSignedInUser() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new Error("Please sign in first");

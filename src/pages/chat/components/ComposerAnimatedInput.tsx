@@ -170,7 +170,6 @@ export function ComposerAnimatedInput(props: ComposerAnimatedInputProps) {
         }
         const modeMap: Record<string, ChatMode> = {
           learning: "learning",
-          shopping: "shopping",
           "deep-research": "deep-research",
           operator: "operator",
         };

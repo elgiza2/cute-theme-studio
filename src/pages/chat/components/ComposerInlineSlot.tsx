@@ -1,8 +1,5 @@
-import SlidesTemplateButton from "./SlidesTemplateButton";
-import ResearchDepthDropdown from "./ResearchDepthDropdown";
 import type { ChatMode } from "../chatConstants";
 import type { AgentDef } from "@/lib/agentRegistry";
-
 
 interface ComposerInlineSlotProps {
   isMobileViewport: boolean;
@@ -28,48 +25,13 @@ interface ComposerInlineSlotProps {
   setVideoDurationSec?: (n: any) => void;
 }
 
-/** Inline pills/menus rendered above the composer textarea. */
-export function ComposerInlineSlot(props: ComposerInlineSlotProps) {
-  const {
-    chatMode,
-    setChatMode,
-    tierMenuOpen,
-    setTierMenuOpen,
-    selectedModel,
-    setSelectedModel,
-    megsyTier,
-    setMegsyTier,
-    userPlan,
-    mediaModel,
-    setMediaModel,
-    chatUserId,
-    selectedAgent,
-    slidesTemplate,
-    setSlidesPickerOpen,
-    researchDepth,
-    setResearchDepth,
-    researchDepthOpen,
-    setResearchDepthOpen,
-    setVideoDurationSec,
-  } = props;
-
-  const isSlidesMode =
-    chatMode === "slides" ||
-    chatMode === "slides-images" ||
-    selectedAgent?.id === "slides" ||
-    selectedAgent?.id === "slides-images";
-
-  const isDeepResearch = chatMode === "deep-research";
-
-  return (
-    <>
-      {isSlidesMode ? (
-        <SlidesTemplateButton
-          slidesTemplate={slidesTemplate}
-          onOpenPicker={() => setSlidesPickerOpen(true)}
-        />
-      ) : null}
-      {/* Deep-research depth moved into the model menu (Depth panel). */}
-    </>
-  );
+/**
+ * Kept as a compatibility slot for the assistant-ui composer.
+ * Service identity and controls are rendered by the shared header slots now,
+ * so this slot must stay empty to prevent duplicate pills.
+ */
+export function ComposerInlineSlot(_props: ComposerInlineSlotProps) {
+  return null;
 }
+
+export default ComposerInlineSlot;

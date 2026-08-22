@@ -44,11 +44,6 @@ export const SKILL_TOOLS: SkillToolOption[] = [
     description: "Semantic search inside your uploaded files",
   },
   {
-    name: "SHOPPING_SEARCH",
-    label: "Product Search",
-    description: "Find products across online stores",
-  },
-  {
     name: "CANVA_CREATE_SLIDES",
     label: "Canva Slides",
     description: "Generate slide decks via Canva",

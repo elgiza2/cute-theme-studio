@@ -66,15 +66,20 @@ function ActiveServicePillImpl({ chatMode, selectedAgent, onClear }: ActiveServi
   return (
     <div
       data-service-indicator="true"
-      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-white/[0.14] bg-white/[0.06] px-2.5 text-[11px] font-semibold text-white/80"
+      className="inline-flex h-8 items-center gap-2 rounded-full border border-white/[0.14] bg-white/[0.08] px-3 text-[12px] font-semibold text-foreground"
     >
-      <Icon size={12} strokeWidth={2.4} style={{ color }} />
+      <span
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full"
+        style={{ background: `color-mix(in srgb, ${color} 18%, transparent)` }}
+      >
+        <Icon size={13} strokeWidth={2.4} style={{ color }} />
+      </span>
       <span className="leading-none">{label}</span>
       <button
         type="button"
         onClick={onClear}
         aria-label={`Clear ${label}`}
-        className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-white/45 transition-colors hover:bg-white/[0.12] hover:text-white"
+        className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-foreground/45 transition-colors hover:bg-white/[0.12] hover:text-foreground"
       >
         <X size={10} strokeWidth={2.6} />
       </button>

@@ -142,7 +142,8 @@ const PlusMain = (p: PlusContentProps) => {
       title: "Create",
       items: [
         { id: "image", label: "Create image", Icon: ImagePlus, onClick: closeThen(() => p.onModeChange?.("images")) },
-        { id: "audio", label: "Create audio", Icon: AudioLines, onClick: closeThen(() => p.onModeChange?.("music")) },
+        { id: "voice", label: "Voice", Icon: AudioLines, onClick: closeThen(() => p.onAgentSelect?.("voice")) },
+        { id: "music", label: "Create music", Icon: Music2, onClick: closeThen(() => p.onModeChange?.("music")) },
         { id: "video", label: "Create video", Icon: VideoIcon, onClick: closeThen(() => p.onModeChange?.("video")) },
         { id: "slides", label: "Create slides", Icon: Presentation, onClick: closeThen(() => p.onModeChange?.("slides")) },
       ],

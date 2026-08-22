@@ -59,6 +59,129 @@ const SUGGESTIONS = [
   "A 5th grade math tutor",
 ];
 
+type SkillDraftResponse = {
+  action: "draft" | "question";
+  message?: string;
+  summary?: string;
+  skill?: {
+    name?: string;
+    description?: string;
+    body?: string;
+    triggers?: string[];
+    enabled_tools?: string[];
+    preferred_model?: string | null;
+  };
+};
+
+function parseJsonObject(text: string): Record<string, unknown> | null {
+  const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  try {
+    return JSON.parse(cleaned) as Record<string, unknown>;
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start < 0 || end <= start) return null;
+    try {
+      return JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+}
+
+async function readChatStreamText(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type") || "";
+  if (!response.body || !contentType.includes("text/event-stream")) {
+    const raw = await response.text();
+    try {
+      const json = JSON.parse(raw) as any;
+      return String(json?.message || json?.content || json?.error || raw);
+    } catch {
+      return raw;
+    }
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  const consume = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) return;
+    const payload = trimmed.slice(5).trim();
+    if (!payload || payload === "[DONE]") return;
+    try {
+      const json = JSON.parse(payload);
+      const delta = json?.choices?.[0]?.delta?.content || json?.choices?.[0]?.message?.content;
+      if (typeof delta === "string") text += delta;
+      if (typeof json?.content === "string") text += json.content;
+    } catch {
+      /* Ignore malformed heartbeat frames. */
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    lines.forEach(consume);
+  }
+  buffer += decoder.decode();
+  if (buffer.trim()) consume(buffer);
+  return text.trim();
+}
+
+async function requestSkillDraft(messages: ChatMsg[]): Promise<SkillDraftResponse> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const headers = {
+    "Content-Type": "application/json",
+    apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    Authorization: `Bearer ${token}`,
+  };
+  const body = { messages: messages.map((m) => ({ role: m.role, content: m.content })) };
+
+  const primary = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-skill`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (primary.ok) return (await primary.json()) as SkillDraftResponse;
+  if (primary.status !== 404) {
+    const reason = await primary.text().catch(() => "");
+    throw new Error(reason || `Skill designer failed (${primary.status})`);
+  }
+
+  const instruction = [
+    "You are Megsy's skill designer. Turn the conversation into a reusable skill draft.",
+    "Return JSON only, with no markdown and no extra keys.",
+    'Schema: {"action":"draft","summary":"short sentence","skill":{"name":"...","description":"...","body":"clear step-by-step instructions","triggers":["..."],"enabled_tools":[],"preferred_model":null}}',
+    "If the request is too vague, return {\"action\":\"question\",\"message\":\"one concise question\"}.",
+  ].join("\n");
+  const fallback = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-alibaba`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      tier: "pro",
+      chatMode: "normal",
+      customSystem: instruction,
+      messages: [...body.messages, { role: "user", content: instruction }],
+    }),
+  });
+  if (!fallback.ok) {
+    const reason = await fallback.text().catch(() => "");
+    throw new Error(reason || `Skill designer fallback failed (${fallback.status})`);
+  }
+  const raw = await readChatStreamText(fallback);
+  const parsed = parseJsonObject(raw);
+  if (!parsed) throw new Error("Skill designer returned an invalid draft.");
+  return parsed as SkillDraftResponse;
+}
+
 export default function SkillsSettingsPage() {
   const navigate = useNavigate();
   const confirmDialog = useConfirm();
@@ -619,26 +742,12 @@ function SkillDesigner({
     setInput("");
     setThinking(true);
     try {
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-skill`;
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          messages: next.map((m) => ({ role: m.role, content: m.content })),
-        }),
-      });
-      const data = await resp.json();
+      const data = await requestSkillDraft(next);
       if (data.action === "draft" && data.skill) {
         const s = data.skill;
-        setDraft({
+        const normalizedSkill: DraftSkill = {
           ...draft,
-          name: s.name || draft.name,
+          name: s.name || draft.name || "New skill",
           description: s.description || "",
           body: s.body || "",
           triggers: Array.isArray(s.triggers)
@@ -646,7 +755,8 @@ function SkillDesigner({
             : [],
           enabled_tools: Array.isArray(s.enabled_tools) ? s.enabled_tools : [],
           preferred_model: s.preferred_model ?? null,
-        });
+        };
+        setDraft(normalizedSkill);
         setMessages([
           ...next,
           {
@@ -654,7 +764,7 @@ function SkillDesigner({
             content:
               data.summary ||
               `I've drafted "${s.name}". Open the preview to fine-tune anything, or hit Save.`,
-            draft: s,
+            draft: normalizedSkill,
             summary: data.summary,
           },
         ]);
