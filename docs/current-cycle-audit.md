@@ -327,3 +327,11 @@ The source now exports supabaseConfigurationMissing, uses a non-secret sentinel 
 The current source has exactly one `ComposerServicePanel` instance in `ChatComposerSection`, with one Slides `SelectRow` whose accessible label is `Choose template`. `ChatGlobalModals` renders `TemplatePickerSheet` only when the same `slidesPickerOpen` state is true, so the sheet is a consequence of the single trigger, not a second selector. The prior duplicate Manila controls belong to the stale/wrong Vercel deployment.
 
 The current Deep Research approval path uses `PARALLEL_API_KEY` by default, creates a Parallel Task Run with a language-aware long-form prompt, records `research_job_id` metadata, registers the run in `parallel_tasks`, and schedules bounded server-side polling. A completed result is accepted only when its normalized report is at least 600 characters; citations/sources are normalized from multiple output shapes. This source review found no additional duplicate waiting component in the current implementation.
+
+### Current-source Vercel route smoke — Aug 22, 2026
+
+The new Vercel project `megsyai-preview-current` is linked to `elgiza2/megsyai-vercel-preview` and deployed commit `c3215ec`. Its root and `/chat` routes both return HTTP 200, load the current bundle, and mount React. The `/chat` route is served by the SPA rewrite and shows the same actionable Supabase configuration state. Functional authenticated service testing remains blocked until the Vercel project receives the public `VITE_SUPABASE_PUBLISHABLE_KEY` and is redeployed.
+
+### Current-source Vercel UI smoke — post-fallback deployment
+
+After deployment `dpl_C2krAwxJPCnUTjL222XPpQ4UKKuw` became READY at commit `0766ff4`, the normal URL `https://megsyai-preview-current.vercel.app/` opened the real Megsy landing/chat interface. Slides activation showed one inline `Choose template` button labeled `Manila`; opening it displayed the separate style sheet. A DOM measurement while the sheet was open returned `totalChooseTemplateButtons=1`, `visibleChooseTemplateButtons=1`, and `pickerVisible=true`. The source and live UI therefore satisfy the single-template-trigger requirement. Full provider generation still requires an authenticated session in this new Vercel origin.
