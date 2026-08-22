@@ -81,9 +81,7 @@ export function ChatComposerSection(props: ChatComposerSectionProps) {
   const [modesShown, setModesShown] = useState(true);
   const [, setInputFocused] = useState(false);
   const d = desktopModeChipsProps as any;
-  const hasActiveService =
-    d.selectedAgent?.id === "docs" ||
-    (d.chatMode && d.chatMode !== "normal");
+  const hasActiveService = Boolean(d.selectedAgent || (d.chatMode && d.chatMode !== "normal"));
 
   // Hide chips whenever a service is active; also hide on mobile once the
   // conversation has started or the user is typing (input focused). They
@@ -187,11 +185,8 @@ export function ChatComposerSection(props: ChatComposerSectionProps) {
                       chatMode={d.chatMode}
                       selectedAgent={d.selectedAgent}
                       onClear={() => {
-                        if (d.selectedAgent?.id === "docs") {
-                          d.setSelectedAgent(null);
-                        } else {
-                          d.handleModeChange("normal");
-                        }
+                        if (d.selectedAgent) d.setSelectedAgent?.(null);
+                        d.handleModeChange("normal");
                         setModesShown(true);
                       }}
                     />

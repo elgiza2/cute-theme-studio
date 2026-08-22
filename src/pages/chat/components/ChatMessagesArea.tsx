@@ -1,6 +1,5 @@
 import { forwardRef, lazy, Suspense, type ReactNode, type RefObject } from "react";
 import { MobileChatLandingMount } from "./MobileChatLandingMount";
-import { ScrollToBottomButton } from "./ScrollToBottomButton";
 import type { Message, ChatMode } from "../chatConstants";
 
 /**
@@ -59,7 +58,7 @@ interface ChatMessagesAreaProps {
  *   1. Loading skeleton (initial conversation fetch)
  *   2. Empty/welcome layout with mobile landing + desktop greeting + DarkVeil
  *   3. The actual ChatMessagesList transcript
- * Also hosts the floating ScrollToBottomButton.
+ * The composer owns navigation actions; this component only renders the transcript.
  */
 export const ChatMessagesArea = forwardRef<HTMLDivElement, ChatMessagesAreaProps>(
   function ChatMessagesArea(props, messagesEndRef) {
@@ -142,11 +141,6 @@ export const ChatMessagesArea = forwardRef<HTMLDivElement, ChatMessagesAreaProps
           </div>
         )}
 
-        <ScrollToBottomButton
-          visible={(showScrollBtn || newMessagesCount > 0) && messages.length > 0}
-          newMessagesCount={newMessagesCount}
-          onClick={scrollToBottom}
-        />
       </div>
     );
   },

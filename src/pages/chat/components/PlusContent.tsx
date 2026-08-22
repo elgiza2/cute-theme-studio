@@ -146,7 +146,6 @@ const PlusMain = (p: PlusContentProps) => {
       title: "Create",
       items: [
         { id: "image", label: "Create image", Icon: ImagePlus, onClick: closeThen(() => p.onModeChange?.("images")) },
-        { id: "image-edit", label: "Edit image", Icon: Wand2, onClick: closeThen(() => p.onModeChange?.("images")) },
         { id: "audio", label: "Create audio", Icon: AudioLines, onClick: closeThen(() => p.onModeChange?.("music")) },
         { id: "video", label: "Create video", Icon: VideoIcon, onClick: closeThen(() => p.onModeChange?.("video")) },
         { id: "slides", label: "Create slides", Icon: Presentation, onClick: closeThen(() => p.onModeChange?.("slides")) },
@@ -155,7 +154,6 @@ const PlusMain = (p: PlusContentProps) => {
     {
       title: "Build",
       items: [
-        { id: "website", label: "Create a website", Icon: Code2, badge: "New", onClick: closeThen(() => p.onWebsiteStart?.()) },
         { id: "code", label: "Write and build code", Icon: Smartphone, onClick: closeThen(() => p.onModeChange?.("code")) },
         { id: "agent", label: "Agent", Icon: Bot, badge: "New", onClick: closeThen(() => p.onAgentSelect?.("computer")) },
         { id: "operator", label: "Connect computer", Icon: Monitor, onClick: closeThen(() => p.onModeChange?.("operator")) },

@@ -1,6 +1,6 @@
 import { memo, startTransition, useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useLocation, type NavigateOptions } from "react-router-dom";
-import { Plus, PanelLeft, LogIn, Cloud, Sparkles, Boxes, Settings, ChevronDown } from "lucide-react";
+import { Plus, PanelLeft, LogIn, Cloud, Sparkles, Settings, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserSafe } from "@/lib/authSafe";
 import { getOwnProfile } from "@/lib/ownProfile";
@@ -10,7 +10,7 @@ import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 import MegsyStar from "@/components/files/MegsyStar";
 import { useBrandLogo } from "@/hooks/useBrandLogo";
 
-import { MediaIcon, CornIcon, EarnIcon, HomeIcon } from "@/components/sidebar/SidebarIcons";
+import { EarnIcon, HomeIcon } from "@/components/sidebar/SidebarIcons";
 import { useActiveWorkspaceId, WORKSPACE_CHANGED_EVENT } from "@/lib/activeWorkspace";
 import WorkspaceSwitcher from "@/components/workspace/WorkspaceSwitcher";
 import { useActiveAccount } from "@/hooks/useActiveAccount";
@@ -401,12 +401,6 @@ const AppSidebar = ({
       path: "/",
       match: (p: string) => p === "/" || p.startsWith("/chat"),
     },
-    {
-      label: "Apps",
-      Icon: Boxes,
-      path: "/apps",
-      match: (p: string) => p.startsWith("/apps"),
-    },
   ];
 
   const moreNav: Array<{
@@ -415,12 +409,6 @@ const AppSidebar = ({
     path: string;
     match: (p: string) => boolean;
   }> = [
-    {
-      label: uiT("sidebarLibrary"),
-      Icon: MediaIcon,
-      path: "/library",
-      match: (p: string) => p.startsWith("/library"),
-    },
   ];
 
   const isTelegramUser = useIsTelegramUser();
@@ -428,15 +416,15 @@ const AppSidebar = ({
   moreNav.push({
     label: uiT("sidebarEarn"),
     Icon: EarnIcon,
-    path: "/settings/referrals",
-    match: (p: string) => p.startsWith("/settings/referrals") && !p.includes("tasks"),
+    path: "/settings/earn",
+    match: (p: string) => p.startsWith("/settings/earn") && !p.includes("tasks"),
   });
   if (isTelegramUser) {
     moreNav.push({
       label: "Tasks",
       Icon: EarnIcon,
-      path: "/settings/referrals/tasks",
-      match: (p: string) => p.startsWith("/settings/referrals") && p.includes("tasks"),
+      path: "/settings/earn/tasks",
+      match: (p: string) => p.startsWith("/settings/earn") && p.includes("tasks"),
     });
   }
 
