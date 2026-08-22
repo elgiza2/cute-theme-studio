@@ -212,7 +212,7 @@ function MobileHero({ onShareClick }: { onShareClick?: () => void }) {
         {/* CTA row */}
         <div className="relative z-10 mt-5 grid grid-cols-2 gap-2">
           <Link
-            to="/settings/referrals/withdrawals"
+            to="/settings/earn/withdrawals"
             className="inline-flex items-center justify-center gap-2 rounded-full py-3 text-[13px] font-semibold text-background transition active:scale-[0.98]"
             style={{
               background: `linear-gradient(180deg, ${GOLD_SOFT} 0%, ${GOLD} 60%, #8B5E22 100%)`,
@@ -398,9 +398,9 @@ function MobileHero({ onShareClick }: { onShareClick?: () => void }) {
       {/* -------- Sub-page anchors -------- */}
       <div className="mt-5 grid grid-cols-3 gap-2">
         {[
-          { to: "/settings/referrals/program", label: "Program" },
-          { to: "/settings/referrals/tasks", label: "Tasks" },
-          { to: "/settings/referrals/withdrawals", label: "Payouts" },
+          { to: "/settings/earn/program", label: "Program" },
+          { to: "/settings/earn/tasks", label: "Tasks" },
+          { to: "/settings/earn/withdrawals", label: "Payouts" },
         ].map((n) => (
           <Link
             key={n.to}
@@ -494,7 +494,7 @@ function DesktopHero({ onShareClick }: { onShareClick?: () => void }) {
             </div>
             {totalEarned > 0 ? (
               <Link
-                to="/settings/referrals/withdrawals"
+                to="/settings/earn/withdrawals"
                 className="mt-3 sm:mt-4 inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-full bg-white px-3 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-sm font-medium text-background hover:bg-foreground/90 transition-colors"
               >
                 Withdraw

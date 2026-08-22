@@ -199,10 +199,10 @@ export const useReferrals = () => {
 };
 
 const TABS = [
-  { to: "/settings/referrals", label: "Dashboard", end: true },
-  { to: "/settings/referrals/program", label: "Program", end: false },
-  { to: "/settings/referrals/tasks", label: "Tasks", end: false },
-  { to: "/settings/referrals/withdrawals", label: "Withdraw", end: false },
+  { to: "/settings/earn", label: "Earn", end: true },
+  { to: "/settings/earn/program", label: "Program", end: false },
+  { to: "/settings/earn/tasks", label: "Tasks", end: false },
+  { to: "/settings/earn/withdrawals", label: "Withdraw", end: false },
 ] as const;
 
 const ReferralsPage = () => {
@@ -464,7 +464,7 @@ const ReferralsPage = () => {
           onCopy={copyLink}
           onShare={() => setShareOpen(true)}
           onQr={() => setQrOpen(true)}
-          onResources={() => navigate("/settings/referrals/resources")}
+          onResources={() => navigate("/settings/earn/resources")}
           onMenu={() => setSidebarOpen(true)}
         >
           <Outlet />
@@ -485,7 +485,7 @@ const ReferralsPage = () => {
             <div className="mx-auto grid h-14 w-full grid-cols-[44px_1fr_44px] items-center px-3">
               {isMobileSubRoute ? (
                 <button
-                  onClick={() => navigate("/settings/referrals")}
+                  onClick={() => navigate("/settings/earn")}
                   aria-label="Back"
                   className="grid h-10 w-10 place-items-center rounded-full border border-foreground/10 bg-white/[0.05] text-foreground transition active:scale-90"
                 >

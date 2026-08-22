@@ -17,8 +17,8 @@ export default function TasksMenu({
   if (!open) return null;
 
   const items: Item[] = [
-    { label: "Tasks", icon: ListChecks, to: "/settings/referrals/tasks" },
-    { label: "Program rules", icon: FileText, to: "/settings/referrals/program" },
+    { label: "Tasks", icon: ListChecks, to: "/settings/earn/tasks" },
+    { label: "Program rules", icon: FileText, to: "/settings/earn/program" },
     { label: "Invitation QR code", icon: QrCode, action: onQr },
   ];
 

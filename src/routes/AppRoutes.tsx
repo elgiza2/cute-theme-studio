@@ -115,8 +115,9 @@ export const AppRoutes = ({ currentUserId }: { currentUserId: string | null }) =
       />
       <Route path="/billing/success" element={<BillingSuccessPage />} />
       <Route path="/suc" element={<BillingSuccessPage />} />
+      <Route path="/settings/referrals/*" element={<Navigate to="/settings/earn" replace />} />
       <Route
-        path="/settings/referrals"
+        path="/settings/earn"
         element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>}
       >
         <Route index element={<ReferralsDashboardTab />} />
@@ -125,7 +126,7 @@ export const AppRoutes = ({ currentUserId }: { currentUserId: string | null }) =
         <Route path="withdrawals" element={<ReferralsWithdrawalsTab />} />
       </Route>
       <Route
-        path="/settings/referrals/resources"
+        path="/settings/earn/resources"
         element={<ProtectedRoute><ReferralResourcesPage /></ProtectedRoute>}
       />
       <Route
@@ -262,8 +263,8 @@ export const AppRoutes = ({ currentUserId }: { currentUserId: string | null }) =
     <Route path="/features" element={<Navigate to="/features-guide" replace />} />
     <Route path="/compliance" element={<Navigate to="/legal/compliance" replace />} />
     <Route path="/billing" element={<Navigate to="/settings/billing" replace />} />
-    <Route path="/billing/referrals" element={<Navigate to="/settings/referrals" replace />} />
-    <Route path="/referrals" element={<Navigate to="/settings/referrals" replace />} />
+    <Route path="/billing/referrals" element={<Navigate to="/settings/earn" replace />} />
+    <Route path="/referrals" element={<Navigate to="/settings/earn" replace />} />
     <Route path="/integrations" element={<Navigate to="/chat?integrations=1" replace />} />
     <Route path="/integration" element={<Navigate to="/chat?integrations=1" replace />} />
     <Route path="/settings/help" element={<Navigate to="/settings/support/help" replace />} />
