@@ -1,6 +1,6 @@
 /** @doc Study HUD — the persistent progress bar for Learn Mode (streak, XP, Bloom rung, accuracy). Renders only when chatMode==="learning" and reads live from studyProgress via a subscription so every card answer updates it. */
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Flame, RotateCcw, Sparkles, Target, TrendingUp, Repeat, LayoutDashboard } from "lucide-react";
 import {
@@ -14,14 +14,6 @@ import {
 } from "@/lib/studyProgress";
 import { getDueSummary, subscribeMemory } from "@/lib/learnMemory";
 
-let dueSnapshot = getDueSummary(Date.now(), 3);
-const getDueSnapshot = () => dueSnapshot;
-const subscribeDueSnapshot = (cb: () => void) =>
-  subscribeMemory(() => {
-    dueSnapshot = getDueSummary(Date.now(), 3);
-    cb();
-  });
-
 /**
  * A calm, sticky top strip that shows learners how they're doing at
  * a glance. Only mounts inside Learning Mode (guarded by the parent).
@@ -34,14 +26,8 @@ const subscribeDueSnapshot = (cb: () => void) =>
  *    the messages column so it never fights the composer.
  */
 export function StudyHUD() {
-  // useSyncExternalStore isn't strictly necessary here (no tearing risk
-  // for this UI), but it gives us a clean subscribe-based rerender with
-  // SSR-safe getServerSnapshot.
-  const state = useSyncExternalStore<StudyState>(
-    subscribeStudyState,
-    getStudyState,
-    getStudyState,
-  );
+  const [state, setState] = useState<StudyState>(() => getStudyState());
+  useEffect(() => subscribeStudyState(() => setState(getStudyState())), []);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -151,10 +137,10 @@ export function StudyHUD() {
 }
 
 function DueChip() {
-  const summary = useSyncExternalStore(
-    subscribeDueSnapshot,
-    getDueSnapshot,
-    getDueSnapshot,
+  const [summary, setSummary] = useState(() => getDueSummary(Date.now(), 3));
+  useEffect(
+    () => subscribeMemory(() => setSummary(getDueSummary(Date.now(), 3))),
+    [],
   );
   const count = summary.count;
   if (count === 0) return null;

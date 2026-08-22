@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ResearchJob } from "@/lib/deepResearchJob";
-import { subscribeToResearchJob } from "@/lib/deepResearchJob";
+import { getResearchJob, subscribeToResearchJob } from "@/lib/deepResearchJob";
 import { notifyJobComplete } from "@/lib/notifyJobComplete";
 import { ServiceProgress, type ProgressStep } from "./ServiceProgress";
 
@@ -54,8 +54,31 @@ export function DeepResearchProgress({ jobId, className }: DeepResearchProgressP
 
   useEffect(() => {
     if (!jobId) return;
-    const unsub = subscribeToResearchJob(jobId, (j) => setJob(j));
-    return () => unsub();
+    let alive = true;
+    let pollId: number | null = null;
+    const apply = (j: ResearchJob | null) => {
+      if (!alive || !j) return;
+      setJob(j);
+      if (j.status === "succeeded" || j.status === "failed" || j.status === "cancelled") {
+        if (pollId !== null) window.clearInterval(pollId);
+        pollId = null;
+      }
+    };
+    const refresh = async () => {
+      try {
+        apply(await getResearchJob(jobId));
+      } catch {
+        // Realtime remains the primary channel; polling is best-effort recovery.
+      }
+    };
+    const unsub = subscribeToResearchJob(jobId, apply);
+    pollId = window.setInterval(() => void refresh(), 5_000);
+    void refresh();
+    return () => {
+      alive = false;
+      if (pollId !== null) window.clearInterval(pollId);
+      unsub();
+    };
   }, [jobId]);
 
   const terminal = job?.status === "succeeded" || job?.status === "failed" || job?.status === "cancelled";

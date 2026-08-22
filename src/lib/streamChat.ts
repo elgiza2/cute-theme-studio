@@ -13,6 +13,48 @@ type BrowserPayload = {
   currentStep?: string;
 };
 
+type McpChatConnection = {
+  id: string;
+  name: string;
+  url: string;
+  tool_names: string[];
+  state: string;
+};
+
+let _mcpCache: { expiresAt: number; rows: McpChatConnection[] } | null = null;
+
+/**
+ * Send only the safe MCP connection metadata to the chat edge function.
+ * Auth headers remain server-side in the mcp_connections table and are never
+ * copied into a chat payload or exposed to the model.
+ */
+async function getEnabledMcpConnections(): Promise<McpChatConnection[]> {
+  const now = Date.now();
+  if (_mcpCache && _mcpCache.expiresAt > now) return _mcpCache.rows;
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data, error } = await supabase
+      .from("mcp_connections")
+      .select("id,name,url,tool_names,state,enabled")
+      .eq("enabled", true)
+      .eq("state", "ready");
+    if (error || !Array.isArray(data)) return [];
+    const rows = data
+      .filter((row: any) => /^https:\/\//i.test(String(row?.url || "")))
+      .map((row: any) => ({
+        id: String(row.id),
+        name: String(row.name || "MCP server"),
+        url: String(row.url),
+        tool_names: Array.isArray(row.tool_names) ? row.tool_names.map(String).slice(0, 100) : [],
+        state: String(row.state || "ready"),
+      }));
+    _mcpCache = { expiresAt: now + 30_000, rows };
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-alibaba`;
 
 // Lightweight session-token cache so we don't hit auth/v1/user on every send.
@@ -88,6 +130,9 @@ export async function streamChat({
     id?: string;
     name: string;
     description: string;
+    instructions?: string;
+    enabled_tools?: string[];
+    preferred_model?: string | null;
     triggers?: string[];
     source?: string;
   }>;
@@ -115,6 +160,7 @@ export async function streamChat({
   // subscribe via Realtime; closing the tab no longer interrupts the answer.
   if (background) {
     try {
+      const mcp_connections = await getEnabledMcpConnections();
       const { jobId } = await startJob("chat", {
         messages,
         model,
@@ -129,6 +175,7 @@ export async function streamChat({
         selectedModel,
         activeSkill,
         availableSkills,
+        mcp_connections,
         background: true,
       });
       onJobStart?.(jobId);
@@ -202,6 +249,7 @@ export async function streamChat({
     let completed = false;
     const authToken = await getAccessToken();
     const fingerprint = getAnonFingerprint();
+    const mcp_connections = await getEnabledMcpConnections();
     // Per-mode + per-model system prompt override (learning mode, model
     // voices, depth/language rules). The edge function uses customSystem
     // verbatim when present.
@@ -258,6 +306,7 @@ export async function streamChat({
         selectedModel,
         activeSkill,
         availableSkills,
+        mcp_connections,
         customSystem,
         zone: (typeof window !== "undefined" && (window as any).__MEGSY_ZONE__) || "megsy",
       }),

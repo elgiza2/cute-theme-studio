@@ -225,10 +225,16 @@ export default function ComposerModelMenu({
 
   useEffect(() => {
     if (!isMediaMode || loading || mediaOptions.length === 0) return;
-    if (mediaModel?.type === (mode === "video" ? "video" : "image")) return;
+    const expectedType = mode === "video" ? "video" : "image";
+    const currentSlug = String(mediaModel?.slug || "");
+    const currentIsAvailable =
+      mediaModel?.type === expectedType &&
+      !!currentSlug &&
+      mediaOptions.some((m) => String(m.slug || m.id) === currentSlug);
+    if (currentIsAvailable) return;
     const defaultModel = paid ? mediaOptions[0] : mediaOptions.find((m) => !(m as any).isPremium) || mediaOptions[0];
     onMediaModelSelect(asMediaChoice(defaultModel, mode));
-  }, [isMediaMode, loading, mediaModel?.type, mediaOptions, mode, onMediaModelSelect, paid]);
+  }, [isMediaMode, loading, mediaModel?.slug, mediaModel?.type, mediaOptions, mode, onMediaModelSelect, paid]);
 
   useEffect(() => {
     resetMobileHeader();

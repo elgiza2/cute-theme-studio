@@ -67,7 +67,12 @@ import { runOnIdle } from "@/lib/lazyOnIdle";
 // happen before Sentry boots are still caught by the window handlers below.
 runOnIdle(() => {
   void initSentry();
-  void import("@/lib/webVitals").then((m) => m.initWebVitals());
+  void import("@/lib/webVitals")
+    .then((m) => m.initWebVitals())
+    .catch(() => {
+      // Observability is optional; an ad blocker or offline network must never
+      // surface as an application error or affect the first render.
+    });
 });
 
 // Kick off language init early so <html lang/dir> and stored preference are

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { ComposerPrimitive, useComposerRuntime } from "@assistant-ui/react";
 import AnimatedInput from "@/components/chat/AnimatedInput";
 import type { AgentDef, AgentModel } from "@/lib/agentRegistry";
 import type { ChatMode } from "../chatConstants";
@@ -58,52 +57,6 @@ interface ComposerAnimatedInputProps {
   onInputFocusChange?: (focused: boolean) => void;
 }
 
-/**
- * جسر مزامنة بين نص الإدخال المحلي (`input`) و composer الخاص بـ runtime
- * assistant-ui. يسمح لأي primitive (Send / Quote / SelectionToolbar) بقراءة
- * وكتابة النص عبر الـ runtime بدون تغيير مصدر الحقيقة الفعلي.
- */
-function ComposerTextSync({
-  input,
-  setInput,
-}: {
-  input: string;
-  setInput: (v: string) => void;
-}) {
-  const composer = useComposerRuntime();
-  const inputRef = useRef(input);
-  inputRef.current = input;
-  const setInputRef = useRef(setInput);
-  setInputRef.current = setInput;
-  // آخر نص دفعناه للـ runtime — يمنع ارتداد نفس القيمة إلينا (حلقة لا نهائية
-  // كانت تسبب "Maximum update depth exceeded" وابتلاع حروف أثناء الكتابة).
-  const lastPushed = useRef<string | null>(null);
-
-  // local → runtime
-  useEffect(() => {
-    const state = composer.getState();
-    if (state.text !== input) {
-      lastPushed.current = input;
-      composer.setText(input);
-    }
-  }, [composer, input]);
-
-  // runtime → local (يلتقط setText الخارجي من Quote/SelectionToolbar فقط)
-  useEffect(() => {
-    return composer.subscribe(() => {
-      const text = composer.getState().text;
-      if (text === lastPushed.current) return; // صدى دفعتنا نحن
-      if (text !== inputRef.current) {
-        lastPushed.current = text;
-        setInputRef.current(text);
-      }
-    });
-  }, [composer]);
-
-
-  return null;
-}
-
 export function ComposerAnimatedInput(props: ComposerAnimatedInputProps) {
   const {
     input,
@@ -136,10 +89,7 @@ export function ComposerAnimatedInput(props: ComposerAnimatedInputProps) {
   } = props;
 
   return (
-    <>
-      <ComposerTextSync input={input} setInput={setInput} />
-      <ComposerPrimitive.Root asChild>
-        <AnimatedInput
+    <AnimatedInput
           value={input}
 
 
@@ -210,9 +160,7 @@ export function ComposerAnimatedInput(props: ComposerAnimatedInputProps) {
       }
       headerSlot={(props as any).activeServiceHeader ?? null}
       activeServiceSlot={(props as any).activeServiceSlot ?? null}
-        />
-      </ComposerPrimitive.Root>
-    </>
+    />
   );
 }
 

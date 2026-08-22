@@ -8,6 +8,8 @@ import { compression, defineAlgorithm } from "vite-plugin-compression2";
 import { constants as zlibConstants } from "zlib";
 import { VitePWA } from "vite-plugin-pwa";
 
+const disableReactCompiler = process.env.MEGSY_DISABLE_REACT_COMPILER === "1";
+
 function createIntegrationAppToken() {
   const workspaceKey = process.env.INTEGRATION_APP_WORKSPACE_KEY ?? process.env.MEMBRANE_WORKSPACE_KEY;
   const workspaceSecret = process.env.INTEGRATION_APP_WORKSPACE_SECRET ?? process.env.MEMBRANE_WORKSPACE_SECRET;
@@ -200,16 +202,20 @@ function computerAgentDevPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [
-    react({
-      babel: {
-        plugins: [
-          // React Compiler — auto-memoizes every component and hook across
-          // the site. Eliminates unnecessary re-renders without hand-written
-          // React.memo / useMemo / useCallback everywhere. Runs at build time.
-          ["babel-plugin-react-compiler", { target: "19" }],
-        ],
-      },
-    }),
+    react(
+      disableReactCompiler
+        ? {}
+        : {
+            babel: {
+              plugins: [
+                // React Compiler — auto-memoizes every component and hook across
+                // the site. Eliminates unnecessary re-renders without hand-written
+                // React.memo / useMemo / useCallback everywhere. Runs at build time.
+                ["babel-plugin-react-compiler", { target: "19" }],
+              ],
+            },
+          },
+    ),
     integrationAppTokenDevPlugin(),
     anythingApiDevPlugin(),
     manusAdminDevPlugin(),
@@ -370,33 +376,35 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    // Local QA mode keeps Vite from scanning the entire 500+ file tree. Include
+    // known CJS dependencies that otherwise fail as raw ESM in Chromium.
+    ...(process.env.MEGSY_DISABLE_DEP_OPT === "1" ? { noDiscovery: true } : {}),
     // Static HTML templates under public/templates/* import 3D libs from CDNs
     // (three/addons, stats-gl, etc.) directly in the browser. Vite's dep
     // scanner tries to resolve them from node_modules and warns on every boot.
     // They are not part of the app bundle — exclude them from scanning.
-    entries: ["index.html", "src/**/*.{ts,tsx}"],
+    entries: process.env.MEGSY_DISABLE_DEP_OPT === "1" ? [] : ["index.html", "src/**/*.{ts,tsx}"],
     // Pre-bundle icon + date + class helper libs once. They ship hundreds of
     // tiny ESM files; without pre-bundling the dev server issues a separate
     // request per icon / helper (thousands of round-trips) — the single biggest
     // source of dev-time lag. Prod already tree-shakes them via package exports.
     include: [
+      ...(process.env.MEGSY_DISABLE_DEP_OPT === "1" ? ["react", "react-dom", "react-dom/client", "react-fast-compare", "invariant", "shallowequal", "cookie", "set-cookie-parser", "secure-json-parse"] : []),
       "use-sync-external-store/shim/with-selector",
       "lucide-react",
-      "date-fns",
-      "date-fns/locale",
       "clsx",
       "tailwind-merge",
       "class-variance-authority",
-      // Brand icons are dynamically imported per-brand (BrandIcon.tsx). Without
-      // pre-bundling, the first render of a new brand triggers a mid-session
-      // dep re-optimize, which invalidates already-loaded chunk URLs and makes
-      // the page hang with "Failed to fetch dynamically imported module".
-      ...[
-        "Flux","Bfl","OpenAI","Gemini","NanoBanana","Ideogram","Recraft","ByteDance","Doubao",
-        "Alibaba","Kling","Minimax","Runway","Stability","Grok","XAI","Fal","Sora","Luma","Pika",
-        "PixVerse","Hailuo","Hedra","Hunyuan","CogVideo","Kolors","Krea","Midjourney","Dalle",
-        "TopazLabs","Claude","Anthropic","Perplexity","Zhipu","Kimi",
-      ].map((n) => `@lobehub/icons/es/${n}`),
+      ...(process.env.MEGSY_DISABLE_DEP_OPT === "1" ? [] : [
+        "date-fns",
+        "date-fns/locale",
+        ...[
+          "Flux", "Bfl", "OpenAI", "Gemini", "NanoBanana", "Ideogram", "Recraft", "ByteDance", "Doubao",
+          "Alibaba", "Kling", "Minimax", "Runway", "Stability", "Grok", "XAI", "Fal", "Sora", "Luma",
+          "Pika", "PixVerse", "Hailuo", "Hedra", "Hunyuan", "CogVideo", "Kolors", "Krea", "Midjourney",
+          "Dalle", "TopazLabs", "Claude", "Anthropic", "Perplexity", "Zhipu", "Kimi",
+        ].map((n) => `@lobehub/icons/es/${n}`),
+      ]),
     ],
 
 

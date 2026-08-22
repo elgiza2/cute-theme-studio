@@ -113,6 +113,9 @@ type Skill = {
   id?: string;
   name: string;
   description?: string;
+  instructions?: string;
+  enabled_tools?: string[];
+  preferred_model?: string | null;
   triggers?: string[];
   source?: string;
 };
@@ -564,6 +567,9 @@ export async function runChatStreamTurn(opts: RunChatStreamTurnOptions): Promise
         id: s.id,
         name: s.name,
         description: s.description,
+        instructions: s.instructions,
+        enabled_tools: s.enabled_tools || [],
+        preferred_model: s.preferred_model ?? null,
         triggers: s.triggers || [],
         source: s.source,
       })),
