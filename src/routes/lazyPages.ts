@@ -37,7 +37,6 @@ export const BillingSuccessPage = lazy(() => import("@/pages/billing/BillingSucc
 export const ReferralsPage = lazy(() => import("@/pages/billing/ReferralsPage"));
 export const ReferralsDashboardTab = lazy(() => import("@/pages/billing/referrals/DashboardTab"));
 export const ReferralsProgramTab = lazy(() => import("@/pages/billing/referrals/ProgramTab"));
-export const ReferralsTasksTab = lazy(() => import("@/pages/billing/referrals/TasksTab"));
 export const ReferralsWithdrawalsTab = lazy(() => import("@/pages/billing/referrals/WithdrawalsTab"));
 export const ReferralResourcesPage = lazy(() => import("@/pages/billing/ReferralResourcesPage"));
 export const WithdrawPage = lazy(() => import("@/pages/billing/WithdrawPage"));
@@ -56,7 +55,6 @@ export const UsagePage = lazy(() => import("@/pages/usage/UsagePage"));
 export const NotificationsInboxPage = lazy(() => import("@/pages/notifications/NotificationsInboxPage"));
 export const McpSettingsPage = lazy(() => import("@/pages/settings/McpSettingsPage"));
 export const AIPersonalizationPage = lazy(() => import("@/pages/settings/AIPersonalizationPage"));
-export const ScheduledTasksPage = lazy(() => import("@/pages/settings/ScheduledTasksPage"));
 export const SettingsSupportPage = lazy(() => import("@/pages/settings/SettingsSupportPage"));
 export const SettingsHelpPage = lazy(() => import("@/pages/settings/SettingsHelpPage"));
 export const SettingsContactPage = lazy(() => import("@/pages/settings/SettingsContactPage"));

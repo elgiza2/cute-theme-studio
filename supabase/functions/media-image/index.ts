@@ -74,6 +74,61 @@ async function generateDeapi(secret: string, prompt: string, model?: string, wid
   throw Object.assign(new Error("deAPI generation timed out"), { code: "POLL_TIMEOUT" });
 }
 
+type Provider = "d" | "r";
+type ModelRoute = { provider: Provider; model: string };
+
+// UI slugs are stable product identifiers. Provider-native model names stay on
+// the server so a Renderful slug can never leak into a deAPI request (or vice
+// versa). Unknown legacy slugs intentionally fall back to each provider's
+// documented default instead of being forwarded blindly.
+const MODEL_ROUTES: Record<string, ModelRoute> = {
+  "deapi-flux-schnell": { provider: "d", model: "Flux1schnell" },
+  "deapi-flux-2-klein": { provider: "d", model: "Flux_2_Klein_4B_BF16" },
+  "flux1schnell": { provider: "d", model: "Flux1schnell" },
+  "flux_2_klein_4b_bf16": { provider: "d", model: "Flux_2_Klein_4B_BF16" },
+  "gpt-image-2": { provider: "r", model: "gpt-image-2" },
+  "ws-gpt-image-2": { provider: "r", model: "gpt-image-2" },
+  "rb-gpt-image-2": { provider: "r", model: "gpt-image-2" },
+  "renderful-gpt-image-2": { provider: "r", model: "gpt-image-2" },
+  "nano-banana-2": { provider: "r", model: "nano-banana-2" },
+  "ws-nano-banana-2": { provider: "r", model: "nano-banana-2" },
+  "rb-nano-banana-2": { provider: "r", model: "nano-banana-2" },
+  "renderful-nano-banana-2": { provider: "r", model: "nano-banana-2" },
+  "seedream-4-5": { provider: "r", model: "seedream-4.5" },
+  "ws-seedream-4-5": { provider: "r", model: "seedream-4.5" },
+  "rb-seedream-4-5": { provider: "r", model: "seedream-4.5" },
+  "renderful-seedream-4-5": { provider: "r", model: "seedream-4.5" },
+  "grok-imagine-image": { provider: "r", model: "grok-imagine-image" },
+  "ws-grok-imagine": { provider: "r", model: "grok-imagine-image" },
+  "renderful-grok-imagine-image": { provider: "r", model: "grok-imagine-image" },
+};
+
+function resolveModelRoute(rawModel: unknown, explicitProvider?: Provider): ModelRoute | null {
+  const raw = String(rawModel || "").trim();
+  const key = raw.toLowerCase();
+  const direct = MODEL_ROUTES[key];
+  if (direct) return direct;
+  if (explicitProvider === "d" && /flux|deapi/i.test(raw)) {
+    return { provider: "d", model: raw };
+  }
+  if (explicitProvider === "r" && /gpt|banana|seedream|grok|flux/i.test(raw)) {
+    return { provider: "r", model: raw };
+  }
+  if (/gpt[-_]?image|nano[-_]?banana|seedream|grok[-_]?imagine/i.test(raw)) {
+    return { provider: "r", model: raw };
+  }
+  if (/deapi|flux/i.test(raw)) {
+    return { provider: "d", model: raw };
+  }
+  return null;
+}
+
+function providerModel(provider: Provider, requested: unknown): string {
+  const route = resolveModelRoute(requested);
+  if (route?.provider === provider) return route.model;
+  return provider === "d" ? "Flux1schnell" : "flux-dev";
+}
+
 async function generateRenderful(secret: string, prompt: string, model?: string) {
   const created = await requestJson("https://api.renderful.ai/api/v1/generations", {
     method: "POST",
@@ -99,7 +154,7 @@ async function generateRenderful(secret: string, prompt: string, model?: string)
   throw Object.assign(new Error("Renderful generation timed out"), { code: "POLL_TIMEOUT" });
 }
 
-async function tryProvider(provider: "d" | "r", prompt: string, model?: string, width?: number, height?: number) {
+async function tryProvider(provider: Provider, prompt: string, model?: string, width?: number, height?: number) {
   const attempted = new Set<string>();
   for (let i = 0; i < 10; i++) {
     let data: any;
@@ -110,9 +165,10 @@ async function tryProvider(provider: "d" | "r", prompt: string, model?: string, 
     attempted.add(key.key_id);
     await rpc("image_provider_mark_used", { p_key_id: key.key_id }).catch((error) => console.error("[image-provider] mark-used failed", error));
     try {
+      const nativeModel = providerModel(provider, model);
       const result = provider === "d"
-        ? await generateDeapi(key.secret_value, prompt, model, width, height)
-        : await generateRenderful(key.secret_value, prompt, model);
+        ? await generateDeapi(key.secret_value, prompt, nativeModel, width, height)
+        : await generateRenderful(key.secret_value, prompt, nativeModel);
       await rpc("image_provider_record_result", { p_key_id: key.key_id, p_success: true, p_error_code: null }).catch((error) => console.error("[image-provider] success record failed", error));
       return { provider, ...result };
     } catch (error) {
@@ -126,13 +182,23 @@ async function tryProvider(provider: "d" | "r", prompt: string, model?: string, 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  const payload = await req.json().catch(() => null) as { prompt?: string; provider?: "d" | "r"; model?: string; width?: number; height?: number } | null;
+  const payload = await req.json().catch(() => null) as {
+    prompt?: string;
+    provider?: Provider;
+    model?: string;
+    model_slug?: string;
+    width?: number;
+    height?: number;
+  } | null;
   const prompt = payload?.prompt?.trim();
   if (!prompt || prompt.length > 4000) return json({ error: "A prompt between 1 and 4000 characters is required" }, 400);
-  const order: ("d" | "r")[] = payload?.provider ? [payload.provider, payload.provider === "d" ? "r" : "d"] : ["d", "r"];
+  const requestedModel = payload?.model_slug || payload?.model;
+  const route = resolveModelRoute(requestedModel, payload?.provider);
+  const primary: Provider = route?.provider || payload?.provider || "d";
+  const order: Provider[] = [primary, primary === "d" ? "r" : "d"];
   try {
     for (const provider of order) {
-      const result = await tryProvider(provider, prompt, payload?.model, payload?.width, payload?.height);
+      const result = await tryProvider(provider, prompt, requestedModel, payload?.width, payload?.height);
       if (result) return json({ ok: true, provider: result.provider, request_id: result.requestId, image_url: result.imageUrl, image_urls: [result.imageUrl] });
     }
     return json({ ok: false, error: "No healthy image provider key is available" }, 503);

@@ -25,6 +25,7 @@ const PROVIDER_LOGO: Record<string, string> = {
   playground: "/model-logos/playground.webp",
   lightricks: "/model-logos/lightricks.webp",
   xai: "/model-logos/xai.ico",
+  renderful: "/model-logos/megsy.png",
 };
 
 // Pick a logo for a model based on provider or slug substring
@@ -122,11 +123,13 @@ const PROVIDER_ORDER = [
   "pixverse",
   "adobe",
   "xai",
+  "renderful",
   "deapi",
 ];
 
 const PROVIDER_LABELS: Record<string, string> = {
   deapi: "Megsy Free",
+  renderful: "Renderful",
   xai: "xAI",
   openai: "OpenAI",
   bytedance: "ByteDance",

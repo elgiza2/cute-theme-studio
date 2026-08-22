@@ -411,22 +411,12 @@ const AppSidebar = ({
   }> = [
   ];
 
-  const isTelegramUser = useIsTelegramUser();
-  // Earn is visible for everyone (site + Telegram). Tasks stays Telegram-only.
   moreNav.push({
     label: uiT("sidebarEarn"),
     Icon: EarnIcon,
     path: "/settings/earn",
-    match: (p: string) => p.startsWith("/settings/earn") && !p.includes("tasks"),
+    match: (p: string) => p.startsWith("/settings/earn"),
   });
-  if (isTelegramUser) {
-    moreNav.push({
-      label: "Tasks",
-      Icon: EarnIcon,
-      path: "/settings/earn/tasks",
-      match: (p: string) => p.startsWith("/settings/earn") && p.includes("tasks"),
-    });
-  }
 
   const handleNewChat = () => {
     if (isBuildMode) navigateSmoothly("/build");

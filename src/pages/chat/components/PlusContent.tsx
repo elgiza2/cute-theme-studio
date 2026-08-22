@@ -22,15 +22,12 @@ import {
   FileText,
   Plug,
   Code2,
-  ListChecks,
   Puzzle,
   ImagePlus,
   Wand2,
   AudioLines,
   Smartphone,
   ScanSearch,
-  ShoppingBag,
-  Monitor,
   Bot,
   
 
@@ -136,7 +133,6 @@ const PlusMain = (p: PlusContentProps) => {
       title: "Tools",
       items: [
         { id: "search", label: "Web search", Icon: Globe, active: p.searchEnabled, toggle: true, onClick: () => p.handleSearchToggle() },
-        { id: "tasks", label: "Scheduled tasks", Icon: ListChecks, onClick: closeThen(() => p.navigate("/settings/tasks")) },
         { id: "skills", label: "Skills", Icon: Puzzle, onClick: closeThen(() => p.navigate("/settings/skills")) },
         { id: "integrations", label: "Integrations", Icon: Plug, onClick: closeThen(() => p.navigate("/chat?integrations=1")) },
       ],
@@ -155,8 +151,7 @@ const PlusMain = (p: PlusContentProps) => {
       title: "Build",
       items: [
         { id: "code", label: "Write and build code", Icon: Smartphone, onClick: closeThen(() => p.onModeChange?.("code")) },
-        { id: "agent", label: "Agent", Icon: Bot, badge: "New", onClick: closeThen(() => p.onAgentSelect?.("computer")) },
-        { id: "operator", label: "Connect computer", Icon: Monitor, onClick: closeThen(() => p.onModeChange?.("operator")) },
+        { id: "agent", label: "Megsy Agent", Icon: Bot, badge: "New", onClick: closeThen(() => p.onAgentSelect?.("computer")) },
       ],
     },
     {
@@ -164,7 +159,6 @@ const PlusMain = (p: PlusContentProps) => {
       items: [
         { id: "research", label: "Extended research", Icon: ScanSearch, onClick: closeThen(() => p.onModeChange?.("deep-research")) },
         { id: "learning", label: "Learning mode", Icon: Lightbulb, onClick: closeThen(() => p.onModeChange?.("learning")) },
-        { id: "shopping", label: "Shopping", Icon: ShoppingBag, onClick: closeThen(() => p.onModeChange?.("shopping")) },
       ],
     },
   ];

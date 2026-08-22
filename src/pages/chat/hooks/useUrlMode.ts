@@ -9,7 +9,6 @@ import type { ChatMode } from "../chatConstants";
 const ALLOWED_URL_MODES: ChatMode[] = [
   "deep-research",
   "learning",
-  "shopping",
   "slides",
   "slides-images",
   "images",

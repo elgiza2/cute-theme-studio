@@ -74,7 +74,7 @@ export const WORKSPACE_PLANS: WorkspacePlanOption[] = [
     id: "elite",
     name: "Elite",
     monthlyPrice: 59,
-    yearlyPrice: 599,
+    yearlyPrice: 590,
     tagline: "Matches the Elite pay plan",
     creditsLabel: `${PLAN_MONTHLY_CREDITS.elite} MC / month`,
     perks: [
@@ -89,7 +89,7 @@ export const WORKSPACE_PLANS: WorkspacePlanOption[] = [
     id: "business",
     name: "Business",
     monthlyPrice: 149,
-    yearlyPrice: 1599,
+    yearlyPrice: 1490,
     tagline: "Matches the Business pay plan",
     creditsLabel: `${PLAN_MONTHLY_CREDITS.business.toLocaleString("en-US")} MC / month`,
     perks: [

@@ -55,18 +55,18 @@ export default function MobilePricingScreen({
   const features = useMemo(() => {
     if (isAr) {
       return plan === "pro"
-        ? ["Unlimited chat with the strongest models", "Deep research, documents and slides", "Megsy Coder with instant deploy", "240 professional images and videos per month", "Priority response"]
-        : ["Everything in Pro, unlimited", "Unlimited professional images", "500 cinematic videos per month", "3x speed and top priority", "Advanced integrations and skills"];
+        ? ["Megsy chat with available models", "240 MC for images, video, slides, docs and code", "Megsy Coder and multi-step work", "Team workspace included", "Priority email support"]
+        : ["Everything in Pro", "500 MC for premium generation", "Priority queue for faster runs", "Advanced presets and analytics", "24/7 priority support"];
     }
     return plan === "pro"
-      ? ["Unlimited chat with flagship models", "Deep Research, Docs & Slides", "Megsy Coder with instant hosting", "240 pro images & videos monthly", "Priority responses"]
-      : ["Everything in Pro, unlimited", "Unlimited pro image generation", "500 cinematic videos monthly", "3× faster, highest priority", "Advanced skills & integrations"];
+      ? ["Megsy chat with available models", "240 MC for images, video, slides, docs and code", "Megsy Coder and multi-step work", "Team workspace included", "Priority email support"]
+      : ["Everything in Pro", "500 MC for premium generation", "Priority queue for faster runs", "Advanced presets and analytics", "24/7 priority support"];
   }, [isAr, plan]);
 
   type PriceBlock = { price: string; strike: string };
   const priceMap: Record<"pro" | "max", { monthly: PriceBlock; yearly: PriceBlock }> = {
-    pro: { monthly: { price: "5", strike: "20" }, yearly: { price: "149", strike: "298" } },
-    max: { monthly: { price: "39", strike: "78" }, yearly: { price: "299", strike: "598" } },
+    pro: { monthly: { price: "7", strike: "25" }, yearly: { price: "250", strike: "300" } },
+    max: { monthly: { price: "59", strike: "" }, yearly: { price: "590", strike: "708" } },
   };
   const prices = priceMap[plan];
   const activeTier: PlanTier = plan === "pro" ? "pro" : "elite";
@@ -202,9 +202,11 @@ export default function MobilePricingScreen({
                   {opt.label}
                 </span>
                 <span className="flex items-baseline gap-1.5 tabular-nums" dir="ltr">
-                  <span className="text-[13px] line-through" style={{ color: c.faint }}>
-                    ${opt.block.strike}
-                  </span>
+                  {opt.block.strike && (
+                    <span className="text-[13px] line-through" style={{ color: c.faint }}>
+                      ${opt.block.strike}
+                    </span>
+                  )}
                   <span className="text-[16px] font-semibold" style={{ color: c.text }}>
                     ${opt.block.price}
                   </span>

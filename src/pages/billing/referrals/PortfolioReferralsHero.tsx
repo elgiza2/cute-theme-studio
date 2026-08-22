@@ -396,10 +396,9 @@ function MobileHero({ onShareClick }: { onShareClick?: () => void }) {
       </div>
 
       {/* -------- Sub-page anchors -------- */}
-      <div className="mt-5 grid grid-cols-3 gap-2">
+      <div className="mt-5 grid grid-cols-2 gap-2">
         {[
           { to: "/settings/earn/program", label: "Program" },
-          { to: "/settings/earn/tasks", label: "Tasks" },
           { to: "/settings/earn/withdrawals", label: "Payouts" },
         ].map((n) => (
           <Link
@@ -470,17 +469,6 @@ function DesktopHero({ onShareClick }: { onShareClick?: () => void }) {
               share, the more you make.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (onShareClick) onShareClick();
-              else void shareLink();
-            }}
-            className="lg-liquid-glass hidden lg:inline-flex self-start items-center gap-2 rounded-full px-4 sm:px-6 py-2.5 sm:py-3 text-[13px] sm:text-sm font-semibold text-foreground whitespace-nowrap"
-          >
-            Share your link
-            <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-          </button>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_1fr] gap-3 sm:gap-4 md:gap-5">

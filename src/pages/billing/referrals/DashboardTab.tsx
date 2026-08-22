@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Check, Copy, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState, fmtDate, useReferrals } from "../ReferralsPage";
 
@@ -17,8 +16,9 @@ const REWARDS = [
     description: "One full month of Megsy AI",
     points: 3500,
     stock: 100,
-    accent: "#cfe0ff",
-    image: "/referrals/aura-orbit.png",
+    accent: "#d9f3e5",
+    accentText: "#10251d",
+    image: "/referrals/aura-monthly.png",
   },
   {
     id: "annual",
@@ -26,18 +26,23 @@ const REWARDS = [
     description: "A full year of creative tools",
     points: 12000,
     stock: 100,
-    accent: "#f0d4bd",
-    image: "/referrals/aura-spark.png",
+    accent: "#f4ddc7",
+    accentText: "#2b1d12",
+    image: "/referrals/aura-annual.png",
   },
 ] as const;
 
+type Reward = (typeof REWARDS)[number];
+
 const formatNumber = (value: number) => new Intl.NumberFormat("en-US").format(value);
 
+const statLabel = "text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45";
+const card = "rounded-[24px] border border-white/[0.09] bg-[#121619]";
+
 export default function DashboardTab() {
-  const navigate = useNavigate();
-  const { userId, refs, earns, wds, signups, link, code, justCopied, copyLink, shareLink } = useReferrals();
+  const { userId, refs, signups, link, code, justCopied, copyLink, shareLink } = useReferrals();
   const db = supabase as any;
-  const [selectedReward, setSelectedReward] = useState<(typeof REWARDS)[number] | null>(null);
+  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [claimed, setClaimed] = useState<string[]>([]);
   const [redeemedCounts, setRedeemedCounts] = useState<Record<string, number>>({});
 
@@ -50,26 +55,41 @@ export default function DashboardTab() {
         db.from("referral_reward_redemptions").select("reward_id").eq("user_id", userId),
       ]);
       if (cancelled) return;
-      setRedeemedCounts(Object.fromEntries((catalog ?? []).map((item: { id: string; stock_redeemed: number }) => [item.id, item.stock_redeemed])));
+      setRedeemedCounts(
+        Object.fromEntries(
+          (catalog ?? []).map((item: { id: string; stock_redeemed: number }) => [item.id, item.stock_redeemed]),
+        ),
+      );
       setClaimed((redemptions ?? []).map((item: { reward_id: string }) => item.reward_id));
     };
-    loadRewards();
-    return () => { cancelled = true; };
-  }, [userId]);
+    void loadRewards();
+    return () => {
+      cancelled = true;
+    };
+  }, [db, userId]);
 
   const activeReferrals = refs.filter((ref) => ref.status === "active" || ref.status === "approved").length;
   const points = signups * SIGNUP_POINTS + activeReferrals * SUBSCRIPTION_POINTS;
   const nextReward = REWARDS.find((reward) => reward.points > points) ?? REWARDS[1];
   const progress = Math.min(100, Math.round((points / nextReward.points) * 100));
-  const availableSubscriptions = Math.max(0, 100 - Math.max(...Object.values(redeemedCounts), 0));
+  const totalRewardSlots = REWARDS.reduce(
+    (total, reward) => total + Math.max(0, reward.stock - (redeemedCounts[reward.id] ?? 0)),
+    0,
+  );
 
-  const activity = useMemo(() => refs.map((ref, index) => ({
-    id: `ref-${ref.id}`,
-    title: `New invite ${String(index + 1).padStart(2, "0")}`,
-    date: ref.created_at,
-    meta: ref.status === "pending" ? "Awaiting confirmation" : "Points credited",
-    points: ref.status === "pending" ? 0 : SIGNUP_POINTS,
-  })).slice(0, 4), [refs]);
+  const activity = useMemo(
+    () =>
+      refs
+        .map((ref, index) => ({
+          id: `ref-${ref.id}`,
+          title: `New invite ${String(index + 1).padStart(2, "0")}`,
+          date: ref.created_at,
+          meta: ref.status === "pending" ? "Awaiting confirmation" : "Points credited",
+          points: ref.status === "pending" ? 0 : SIGNUP_POINTS,
+        }))
+        .slice(0, 4),
+    [refs],
+  );
 
   const redeem = async () => {
     if (!selectedReward) return;
@@ -94,35 +114,225 @@ export default function DashboardTab() {
   };
 
   return (
-    <main dir="ltr" className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-5 text-foreground sm:px-6 lg:max-w-[1180px] lg:px-10 lg:pt-9">
-      <header className="relative overflow-hidden rounded-[28px] border border-white/[.08] bg-[#111315] px-5 pb-6 pt-6 sm:px-8 lg:rounded-[32px] lg:px-10 lg:py-9">
-        <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-[#bbcdf8]/[.11] blur-[80px]" />
-        <div className="relative flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_330px] lg:items-center lg:gap-8">
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-[.22em] text-white/40">Earn</p>
-            <h1 className="mt-3 max-w-[520px] text-[34px] font-semibold leading-[1.05] tracking-[-.06em] sm:text-[46px]">Turn invites into membership.</h1>
-            <p className="mt-4 max-w-[460px] text-[13px] leading-6 text-white/48">Invite people you trust, collect points, and redeem them for Megsy AI membership.</p>
-            <Button onClick={() => shareLink()} variant="solid" size="lg" className="mt-6 h-11 rounded-xl bg-white px-5 text-[13px] font-semibold text-[#111315] hover:bg-white/90">Share your invite link</Button>
+    <main
+      dir="ltr"
+      className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-5 text-foreground sm:px-6 lg:px-10 lg:pt-8"
+    >
+      <header className="relative overflow-hidden rounded-[28px] border border-white/[0.1] bg-[#101416] p-5 sm:p-8 lg:p-10">
+        <div className="pointer-events-none absolute -left-28 -top-32 h-80 w-80 rounded-full bg-[#cfe9dc]/[0.08] blur-[90px]" />
+        <div className="relative grid items-center gap-8 lg:grid-cols-[1fr_360px] lg:gap-12">
+          <div className="max-w-[600px]">
+            <div className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#d9f3e5]" />
+              <p className={statLabel}>Earn with Megsy</p>
+            </div>
+            <h1 className="mt-5 max-w-[580px] text-[36px] font-semibold leading-[1.02] tracking-[-0.06em] text-white sm:text-[52px]">
+              Turn trusted invites into membership.
+            </h1>
+            <p className="mt-5 max-w-[510px] text-[14px] leading-7 text-white/60">
+              Share your personal link, collect points when friends join, and redeem them for a monthly or annual Megsy AI membership.
+            </p>
+            <div className="mt-7 flex flex-col gap-2.5 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => void shareLink()}
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-[#d9f3e5] px-5 text-[13px] font-bold text-[#10251d] shadow-[0_12px_30px_-18px_rgba(217,243,229,0.9)] transition hover:bg-white active:scale-[0.98]"
+              >
+                Share invite link
+                <ArrowUpRight className="ml-2 h-4 w-4" strokeWidth={2.5} />
+              </button>
+              <div className="inline-flex h-11 items-center justify-center rounded-xl border border-white/[0.16] bg-white/[0.05] px-4 text-[12px] font-medium text-white/75">
+                <span className="mr-2 text-white/45">Your code</span>
+                <span className="font-mono text-white">{code || "Creating..."}</span>
+              </div>
+            </div>
           </div>
-          <div className="relative h-[180px] overflow-hidden rounded-[22px] border border-white/[.08] bg-[#17191d] sm:h-[220px] lg:h-[260px]">
-            <img src="/referrals/aura-flow.png" alt="" className="absolute -left-4 top-10 w-[58%] -rotate-12 opacity-70 mix-blend-screen" />
-            <img src="/referrals/aura-orbit.png" alt="" className="absolute -right-5 -top-10 w-[72%] rotate-12 mix-blend-screen" />
-            <img src="/referrals/aura-spark.png" alt="" className="absolute bottom-[-28%] left-[17%] w-[64%] opacity-70 mix-blend-screen" />
-            <div className="absolute bottom-3 left-3 rounded-xl border border-white/[.12] bg-[#15181d]/85 px-3 py-2 backdrop-blur-xl"><p className="text-[9px] uppercase tracking-[.15em] text-white/40">Current balance</p><p className="mt-1 text-[20px] font-semibold tracking-[-.04em]">{formatNumber(points)} <span className="text-[10px] font-normal text-white/45">points</span></p></div>
+          <div className="relative mx-auto w-full max-w-[360px] overflow-hidden rounded-[24px] border border-white/[0.12] bg-[#191d20] shadow-[0_28px_70px_-38px_rgba(0,0,0,0.95)]">
+            <img
+              src="/referrals/aura-hero.png"
+              alt=""
+              className="block aspect-square w-full object-cover"
+              loading="eager"
+              decoding="async"
+            />
+            <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/[0.14] bg-[#0e1214]/85 px-4 py-3 backdrop-blur-xl">
+              <p className={statLabel}>Current balance</p>
+              <p className="mt-1 text-[27px] font-semibold tracking-[-0.05em] text-white">
+                {formatNumber(points)} <span className="text-[11px] font-medium tracking-normal text-white/45">points</span>
+              </p>
+            </div>
           </div>
         </div>
       </header>
 
-      <section className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_.9fr] lg:gap-4">
-        <div className="rounded-[22px] border border-white/[.08] bg-[#131619] p-5 sm:p-7"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] uppercase tracking-[.18em] text-white/35">Progress</p><h2 className="mt-2 text-[19px] font-semibold">Next reward: {nextReward.name}</h2></div><span className="text-[12px] text-white/45">{progress}%</span></div><Progress value={progress} className="mt-5 h-1.5 bg-white/[.08] [&>div]:bg-[#cfe0ff]" /><p className="mt-3 text-[11px] text-white/38">{formatNumber(Math.max(0, nextReward.points - points))} points remaining</p><div className="mt-6 grid grid-cols-3 divide-x divide-white/[.08] text-center"><div><p className="text-[22px] font-semibold">{signups}</p><p className="mt-1 text-[10px] text-white/38">Invites</p></div><div><p className="text-[22px] font-semibold">{activeReferrals}</p><p className="mt-1 text-[10px] text-white/38">Subscribers</p></div><div><p className="text-[22px] font-semibold">{availableSubscriptions}</p><p className="mt-1 text-[10px] text-white/38">Available</p></div></div></div>
-        <div className="rounded-[22px] border border-white/[.08] bg-[#131619] p-5 sm:p-7"><p className="text-[10px] uppercase tracking-[.18em] text-white/35">Invite link</p><h2 className="mt-2 text-[19px] font-semibold">Ready to share.</h2><div className="mt-5 overflow-hidden rounded-xl border border-white/[.08] bg-black/20 px-3 py-3 text-left font-mono text-[11px] text-white/55" dir="ltr">{link || "Creating your link..."}</div><div className="mt-3 flex gap-2"><Button onClick={() => copyLink()} variant="solid" className="h-10 flex-1 rounded-xl bg-white text-[12px] font-semibold text-[#111315] hover:bg-white/90">{justCopied ? "Copied" : "Copy link"}</Button><Button onClick={() => shareLink()} variant="outline" className="h-10 flex-1 rounded-xl border-white/[.12] text-[12px] text-white/70 hover:bg-white/[.06] hover:text-white">Share</Button></div><p className="mt-3 text-[10px] text-white/35">Code: <span className="font-mono text-white/60">{code || "—"}</span></p></div>
+      <section className="mt-3 grid gap-3 lg:grid-cols-[1.08fr_0.92fr] lg:gap-4">
+        <div className={cn(card, "p-5 sm:p-7")}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className={statLabel}>Progress</p>
+              <h2 className="mt-2 text-[20px] font-semibold tracking-[-0.03em] text-white">Next reward: {nextReward.name}</h2>
+            </div>
+            <span className="rounded-full bg-white/[0.07] px-2.5 py-1 text-[11px] font-semibold text-white/70">{progress}%</span>
+          </div>
+          <Progress value={progress} className="mt-6 h-2 bg-white/[0.08] [&>div]:bg-[#d9f3e5]" />
+          <p className="mt-3 text-[11px] text-white/45">{formatNumber(Math.max(0, nextReward.points - points))} points remaining</p>
+          <div className="mt-7 grid grid-cols-3 divide-x divide-white/[0.09] text-center">
+            <div>
+              <p className="text-[25px] font-semibold tracking-[-0.04em] text-white">{signups}</p>
+              <p className="mt-1 text-[10px] text-white/45">Invites</p>
+            </div>
+            <div>
+              <p className="text-[25px] font-semibold tracking-[-0.04em] text-white">{activeReferrals}</p>
+              <p className="mt-1 text-[10px] text-white/45">Subscribers</p>
+            </div>
+            <div>
+              <p className="text-[25px] font-semibold tracking-[-0.04em] text-white">{totalRewardSlots}</p>
+              <p className="mt-1 text-[10px] text-white/45">Reward slots</p>
+            </div>
+          </div>
+        </div>
+
+        <div className={cn(card, "p-5 sm:p-7")}>
+          <p className={statLabel}>Invite link</p>
+          <h2 className="mt-2 text-[20px] font-semibold tracking-[-0.03em] text-white">Ready to share.</h2>
+          <div className="mt-5 flex min-h-11 items-center overflow-hidden rounded-xl border border-white/[0.12] bg-[#0c1012] px-3 text-left font-mono text-[11px] text-white/75" dir="ltr">
+            <span className="truncate">{link || "Creating your link..."}</span>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => void copyLink()}
+              className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-[#d9f3e5] text-[12px] font-bold text-[#10251d] transition hover:bg-white active:scale-[0.98]"
+            >
+              {justCopied ? <Check className="mr-1.5 h-3.5 w-3.5" strokeWidth={2.8} /> : <Copy className="mr-1.5 h-3.5 w-3.5" strokeWidth={2.2} />}
+              {justCopied ? "Copied" : "Copy link"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void shareLink()}
+              className="inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-white/[0.18] bg-white/[0.06] text-[12px] font-semibold text-white transition hover:bg-white/[0.11] active:scale-[0.98]"
+            >
+              Share
+            </button>
+          </div>
+          <p className="mt-3 text-[10px] text-white/45">
+            Referral code: <span className="font-mono text-white/80">{code || "—"}</span>
+          </p>
+        </div>
       </section>
 
-      <section className="mt-9"><div className="mb-4 flex items-end justify-between"><div><p className="text-[10px] uppercase tracking-[.18em] text-white/35">Rewards</p><h2 className="mt-2 text-[23px] font-semibold tracking-[-.035em]">Redeem your points.</h2></div><span className="text-[11px] text-white/35">100 available each</span></div><div className="grid gap-3 lg:grid-cols-2 lg:gap-4">{REWARDS.map((reward) => { const enough = points >= reward.points; const alreadyClaimed = claimed.includes(reward.id); return <article key={reward.id} className={cn("relative overflow-hidden rounded-[22px] border p-5 sm:p-7", reward.id === "annual" ? "border-[#f0d4bd]/25 bg-[#1a1717]" : "border-white/[.08] bg-[#131619]")}><img src={reward.image} alt="" className="pointer-events-none absolute -left-10 -top-16 w-48 opacity-20 mix-blend-screen" /><div className="relative"><p className="text-[10px] uppercase tracking-[.16em] text-white/40">Membership reward</p><h3 className="mt-4 text-[21px] font-semibold">{reward.name}</h3><p className="mt-1 text-[12px] text-white/42">{reward.description}</p><div className="mt-7 flex items-end justify-between gap-3"><div><p className="text-[25px] font-semibold tracking-[-.05em]">{formatNumber(reward.points)} <span className="text-[10px] font-normal text-white/40">points</span></p><p className="mt-1 text-[10px] text-white/35">Remaining {Math.max(0, reward.stock - (redeemedCounts[reward.id] ?? 0))} of 100</p></div><button disabled={!enough || alreadyClaimed} onClick={() => setSelectedReward(reward)} className="h-10 rounded-xl px-4 text-[12px] font-semibold transition active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-35" style={{ backgroundColor: enough && !alreadyClaimed ? reward.accent : "rgba(255,255,255,.08)", color: enough && !alreadyClaimed ? "#17191D" : "rgba(255,255,255,.6)" }}>{alreadyClaimed ? "Requested" : enough ? "Redeem" : "Not enough"}</button></div></div></article>; })}</div></section>
+      <section className="mt-10">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <p className={statLabel}>Membership rewards</p>
+            <h2 className="mt-2 text-[25px] font-semibold tracking-[-0.04em] text-white">Redeem your points.</h2>
+          </div>
+          <span className="text-right text-[11px] text-white/45">100 available per reward</span>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
+          {REWARDS.map((reward) => {
+            const enough = points >= reward.points;
+            const alreadyClaimed = claimed.includes(reward.id);
+            const remaining = Math.max(0, reward.stock - (redeemedCounts[reward.id] ?? 0));
+            return (
+              <article key={reward.id} className={cn(card, "relative min-h-[265px] overflow-hidden p-5 sm:p-7")}>
+                <img src={reward.image} alt="" className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 object-cover opacity-45 mix-blend-screen" loading="lazy" decoding="async" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#121619] via-[#121619]/95 to-transparent" />
+                <div className="relative flex h-full min-h-[215px] flex-col justify-between">
+                  <div>
+                    <p className={statLabel}>Membership reward</p>
+                    <h3 className="mt-4 text-[22px] font-semibold tracking-[-0.04em] text-white">{reward.name}</h3>
+                    <p className="mt-1.5 text-[12px] text-white/55">{reward.description}</p>
+                  </div>
+                  <div className="mt-8 flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-[26px] font-semibold tracking-[-0.05em] text-white">
+                        {formatNumber(reward.points)} <span className="text-[10px] font-medium tracking-normal text-white/45">points</span>
+                      </p>
+                      <p className="mt-1 text-[10px] text-white/45">{remaining} of {reward.stock} remaining</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!enough || alreadyClaimed || remaining === 0}
+                      onClick={() => setSelectedReward(reward)}
+                      className="h-10 rounded-xl px-4 text-[12px] font-bold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:border-white/[0.1] disabled:bg-white/[0.07] disabled:text-white/40"
+                      style={enough && !alreadyClaimed && remaining > 0 ? { backgroundColor: reward.accent, color: reward.accentText } : undefined}
+                    >
+                      {alreadyClaimed ? "Requested" : remaining === 0 ? "Unavailable" : enough ? "Redeem" : "Not enough"}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
-      <section className="mt-9 grid gap-3 lg:grid-cols-[.8fr_1.2fr] lg:gap-4"><div className="rounded-[22px] border border-white/[.08] bg-[#131619] p-5 sm:p-7"><p className="text-[10px] uppercase tracking-[.18em] text-white/35">How it works</p><h2 className="mt-2 text-[19px] font-semibold">Three simple steps.</h2><div className="mt-6 space-y-4">{[{title: "Share your link", body: "Send your personal invite to someone who will enjoy Megsy AI."}, {title: "They join", body: "You earn points when their signup is confirmed."}, {title: "Redeem", body: "Use your points for a monthly or annual membership."}].map((step, index) => <div key={step.title} className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/[.08] text-[10px] text-white/60">{String(index + 1).padStart(2, "0")}</span><div><p className="text-[12px] font-medium text-white/80">{step.title}</p><p className="mt-1 text-[11px] leading-5 text-white/35">{step.body}</p></div></div>)}</div></div><div className="rounded-[22px] border border-white/[.08] bg-[#131619] p-5 sm:p-7"><div className="flex items-end justify-between"><div><p className="text-[10px] uppercase tracking-[.18em] text-white/35">Activity</p><h2 className="mt-2 text-[19px] font-semibold">Recent activity.</h2></div><button onClick={() => navigate("/settings/earn/tasks")} className="text-[11px] text-white/40 hover:text-white">View all</button></div>{activity.length === 0 ? <EmptyState title="No activity yet" hint="Share your link to get your first invite." /> : <div className="mt-4 divide-y divide-white/[.06]">{activity.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 py-3.5 first:pt-0"><div><p className="text-[12px] text-white/75">{item.title}</p><p className="mt-1 text-[10px] text-white/35">{item.meta} · {fmtDate(item.date)}</p></div><span className="text-[11px] text-[#cfe0ff]">{item.points ? `+${formatNumber(item.points)}` : "Pending"}</span></div>)}</div>}</div></section>
+      <section className="mt-10 grid gap-3 lg:grid-cols-[0.82fr_1.18fr] lg:gap-4">
+        <div className={cn(card, "p-5 sm:p-7")}>
+          <p className={statLabel}>How it works</p>
+          <h2 className="mt-2 text-[20px] font-semibold tracking-[-0.03em] text-white">Simple, transparent rewards.</h2>
+          <div className="mt-6 space-y-5">
+            {[
+              { title: "Share your link", body: "Send your personal invite to someone who will enjoy Megsy AI." },
+              { title: "They join", body: "You earn points when their signup is confirmed." },
+              { title: "Redeem", body: "Use your points for a monthly or annual membership." },
+            ].map((step, index) => (
+              <div key={step.title} className="flex gap-3.5">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/[0.14] bg-white/[0.05] font-mono text-[10px] text-white/70">{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <p className="text-[13px] font-semibold text-white/90">{step.title}</p>
+                  <p className="mt-1 text-[11px] leading-5 text-white/50">{step.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className={cn(card, "p-5 sm:p-7")}>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className={statLabel}>Activity</p>
+              <h2 className="mt-2 text-[20px] font-semibold tracking-[-0.03em] text-white">Recent activity.</h2>
+            </div>
+            <span className="text-[11px] text-white/45">Live from your account</span>
+          </div>
+          {activity.length === 0 ? (
+            <EmptyState title="No activity yet" hint="Share your link to get your first invite." />
+          ) : (
+            <div className="mt-5 divide-y divide-white/[0.08]">
+              {activity.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3 py-3.5 first:pt-0">
+                  <div>
+                    <p className="text-[12px] text-white/85">{item.title}</p>
+                    <p className="mt-1 text-[10px] text-white/45">{item.meta} · {fmtDate(item.date)}</p>
+                  </div>
+                  <span className="text-[11px] font-semibold text-[#d9f3e5]">{item.points ? `+${formatNumber(item.points)}` : "Pending"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
-      {selectedReward && <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setSelectedReward(null)}><div className="w-full max-w-md overflow-hidden rounded-[24px] border border-white/[.1] bg-[#181a1e]" onClick={(event) => event.stopPropagation()}><div className="relative h-28 overflow-hidden bg-[#15181d]"><img src={selectedReward.image} alt="" className="absolute left-1/2 top-[-85px] w-56 -translate-x-1/2 opacity-70 mix-blend-screen" /></div><div className="p-6"><p className="text-[10px] uppercase tracking-[.18em] text-white/35">Confirm redemption</p><h2 className="mt-3 text-[22px] font-semibold">{selectedReward.name}</h2><p className="mt-3 text-[12px] leading-6 text-white/50">This will deduct {formatNumber(selectedReward.points)} points and submit your membership activation request.</p><div className="mt-6 flex gap-2"><button onClick={() => setSelectedReward(null)} className="h-11 flex-1 rounded-xl border border-white/[.1] text-[12px] text-white/65">Cancel</button><button onClick={redeem} className="h-11 flex-1 rounded-xl bg-white text-[12px] font-semibold text-[#111315]">Confirm request</button></div></div></div></div>}
+      {selectedReward ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4 backdrop-blur-sm" onClick={() => setSelectedReward(null)}>
+          <div className="w-full max-w-md overflow-hidden rounded-[26px] border border-white/[0.14] bg-[#171b1e] shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="relative h-32 overflow-hidden bg-[#111517]">
+              <img src={selectedReward.image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-75" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#171b1e] to-transparent" />
+            </div>
+            <div className="p-6">
+              <p className={statLabel}>Confirm redemption</p>
+              <h2 className="mt-3 text-[23px] font-semibold tracking-[-0.04em] text-white">{selectedReward.name}</h2>
+              <p className="mt-3 text-[12px] leading-6 text-white/60">This will submit a request for membership activation using {formatNumber(selectedReward.points)} points.</p>
+              <div className="mt-6 flex gap-2">
+                <button type="button" onClick={() => setSelectedReward(null)} className="h-11 flex-1 rounded-xl border border-white/[0.16] bg-white/[0.05] text-[12px] font-semibold text-white/75 transition hover:bg-white/[0.1]">Cancel</button>
+                <button type="button" onClick={() => void redeem()} className="h-11 flex-1 rounded-xl bg-[#d9f3e5] text-[12px] font-bold text-[#10251d] transition hover:bg-white">Confirm request</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

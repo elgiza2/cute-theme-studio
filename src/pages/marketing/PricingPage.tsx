@@ -720,7 +720,7 @@ const PricingPage = () => {
                   {"Limited Launch Offer"}
                 </span>
                 <p className="text-[13px] text-foreground/90 leading-relaxed max-w-[16rem] sm:max-w-[18rem]">
-                  {"Pro first month $5 — 75% OFF the rest"}
+                  {"Pro first month $7 — then $25/month"}
                 </p>
 
               </div>
@@ -819,7 +819,7 @@ const PricingPage = () => {
                 className="text-[9px] px-2 py-0.5 rounded-full border border-foreground/25 text-foreground/85 font-normal"
                 style={{ letterSpacing: "0.15em" }}
               >
-                −20%
+                2 months free
               </span>
             </span>
           </div>
@@ -829,14 +829,17 @@ const PricingPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
           {PLANS.map((p, i) => {
             const rawPrice = isYearly ? p.yearlyPrice : p.monthlyPrice;
-            // Pro monthly gets the $7 first-month offer. Every other card
-            // (including Pro yearly, Elite, Business) uses a 50% off framing.
+            // The displayed amount is the actual checkout amount. Only the
+            // first Pro month has a promotional price; annual plans already
+            // carry their complete 10-month pricing in pricingData.
             const isProFirstMonth = p.tier === "pro" && !isYearly;
-            const price = isProFirstMonth
-              ? (p.firstMonthPrice ?? rawPrice)
-              : Math.round(rawPrice * 0.5);
-            const strikePrice = isProFirstMonth ? rawPrice : rawPrice;
-            const discountLabel = isProFirstMonth ? "75% Off" : "50% Off";
+            const price = isProFirstMonth ? (p.firstMonthPrice ?? rawPrice) : rawPrice;
+            const annualSaving = Math.max(0, Math.round((1 - p.yearlyPrice / (p.monthlyPrice * 12)) * 100));
+            const discountLabel = isProFirstMonth
+              ? "Launch offer"
+              : isYearly
+                ? `${annualSaving}% annual saving`
+                : "Monthly plan";
             const credits = isYearly ? p.yearlyCredits : p.monthlyCredits;
             const isElite = p.tier === "elite";
             const isBusiness = p.tier === "business";
@@ -883,9 +886,11 @@ const PricingPage = () => {
                   </div>
 
                   <div className="flex items-center gap-2 mt-3">
-                    <span className="text-xs text-foreground/85 line-through tabular-nums">
-                      $<CountUp value={strikePrice} />
-                    </span>
+                    {isProFirstMonth && (
+                      <span className="text-xs text-foreground/85 line-through tabular-nums">
+                        $<CountUp value={p.monthlyPrice} />
+                      </span>
+                    )}
                     <span
                       className="text-[10px] uppercase px-2 py-0.5 rounded-full border border-foreground/40 text-foreground font-light"
                       style={{ letterSpacing: "0.18em" }}

@@ -19,7 +19,6 @@ import {
   Menu,
   TrendingUp,
   ChevronLeft,
-  FileText,
 } from "lucide-react";
 // qrcode.react ships its own SVG renderer (~15KB gz). It's only needed when
 // the user opens the QR overlay, so lazy-load it — the referrals landing no
@@ -27,8 +26,6 @@ import {
 const QRCodeSVG = lazy(() =>
   import("qrcode.react").then((m) => ({ default: m.QRCodeSVG })),
 );
-import { PortfolioReferralsHero } from "@/pages/billing/referrals/PortfolioReferralsHero";
-import TasksMenu from "@/pages/billing/referrals/mobile/TasksMenu";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import AppSidebar from "@/components/layout/AppSidebar";
@@ -96,24 +93,6 @@ export interface Withdrawal {
   method: string;
   created_at: string;
 }
-export interface RewardTask {
-  id: string;
-  task_key: string;
-  title: string;
-  description: string | null;
-  reward_credits: number;
-  action_type: string;
-  action_url: string | null;
-  target_count: number;
-  icon: string | null;
-}
-export interface UserTask {
-  task_id: string;
-  progress: number;
-  completed_at: string | null;
-  awarded_credits: number;
-}
-
 export const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
@@ -153,15 +132,12 @@ interface ReferralsContextValue {
   refs: Referral[];
   earns: Earning[];
   wds: Withdrawal[];
-  tasks: RewardTask[];
-  userTasks: UserTask[];
   totalEarned: number;
   committed: number;
   available: number;
   signups: number;
   canWithdraw: boolean;
   justCopied: boolean;
-  claimTask: (task: RewardTask) => Promise<unknown>;
   copyLink: () => Promise<void>;
   shareLink: () => Promise<void>;
   openPromoter: () => void;
@@ -176,15 +152,12 @@ const REFERRALS_FALLBACK: ReferralsContextValue = {
   refs: [],
   earns: [],
   wds: [],
-  tasks: [],
-  userTasks: [],
   totalEarned: 0,
   committed: 0,
   available: 0,
   signups: 0,
   canWithdraw: false,
   justCopied: false,
-  claimTask: async () => undefined,
   copyLink: async () => undefined,
   shareLink: async () => undefined,
   openPromoter: () => undefined,
@@ -198,39 +171,23 @@ export const useReferrals = () => {
   return v ?? REFERRALS_FALLBACK;
 };
 
-const TABS = [
-  { to: "/settings/earn", label: "Earn", end: true },
-  { to: "/settings/earn/program", label: "Program", end: false },
-  { to: "/settings/earn/tasks", label: "Tasks", end: false },
-  { to: "/settings/earn/withdrawals", label: "Withdraw", end: false },
-] as const;
-
 const ReferralsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobileSubRoute = /\/settings\/referrals\/(program|tasks|withdrawals|prizes)/.test(
-    location.pathname,
-  );
-  const mobileTitle = /\/prizes/.test(location.pathname)
-    ? "My Prizes"
-    : /\/program/.test(location.pathname)
-      ? "Program Rules"
-      : /\/tasks/.test(location.pathname)
-        ? "Tasks"
-        : /\/withdrawals/.test(location.pathname)
-          ? "Withdraw"
-          : "Megsy Together";
+  const isMobileSubRoute = /\/settings\/earn\/(program|withdrawals)/.test(location.pathname);
+  const mobileTitle = /\/program/.test(location.pathname)
+    ? "Program Rules"
+    : /\/withdrawals/.test(location.pathname)
+      ? "Withdraw"
+      : "Earn";
   const qrRef = useRef<SVGSVGElement | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [refs, setRefs] = useState<Referral[]>([]);
   const [earns, setEarns] = useState<Earning[]>([]);
   const [wds, setWds] = useState<Withdrawal[]>([]);
-  const [tasks, setTasks] = useState<RewardTask[]>([]);
-  const [userTasks, setUserTasks] = useState<UserTask[]>([]);
   const [justCopied, setJustCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [tasksMenuOpen, setTasksMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const isDesktop = useIsDesktop();
@@ -257,7 +214,7 @@ const ReferralsPage = () => {
     }
     setCode(row.code);
 
-    const [r, e, w, tk, ut] = await Promise.all([
+    const [r, e, w] = await Promise.all([
       supabase
         .from("referrals")
         .select("*")
@@ -273,89 +230,15 @@ const ReferralsPage = () => {
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
-      supabase.from("reward_tasks").select("*").eq("active", true).order("sort_order"),
-      supabase
-        .from("user_reward_tasks")
-        .select("task_id, progress, completed_at, awarded_credits")
-        .eq("user_id", user.id),
     ]);
     setRefs(r.data ?? []);
     setEarns(e.data ?? []);
     setWds(w.data ?? []);
-    setTasks((tk.data as RewardTask[]) ?? []);
-    setUserTasks((ut.data as UserTask[]) ?? []);
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const grantCredits = async (amount: number, description: string) => {
-    if (!userId || !amount) return null;
-    const { data, error } = await supabase.rpc("add_credits", {
-      p_user_id: userId,
-      p_amount: amount,
-      p_description: description,
-    });
-    if (error) {
-      toast.error(`Couldn't credit your account: ${error.message}`);
-      return false;
-    }
-    const payload = data as { success?: boolean; error?: string } | null;
-    if (payload && payload.success === false) {
-      toast.error(`Couldn't credit your account: ${payload.error ?? "Unknown error"}`);
-      return false;
-    }
-    // Notify the rest of the app so the credits badge in the header refreshes immediately
-    window.dispatchEvent(new Event("credits-changed"));
-    return true;
-  };
-
-  const claimTask = async (task: RewardTask) => {
-    if (!userId) return;
-    const existing = userTasks.find((u) => u.task_id === task.id);
-    if (existing?.completed_at) return;
-
-    if (task.action_type === "invite_friends") {
-      const progress = refs.length;
-      if (progress < task.target_count) {
-        toast.error(`Invite ${task.target_count - progress} more friends first`);
-        return;
-      }
-      const { error } = await supabase.from("user_reward_tasks").upsert(
-        {
-          user_id: userId,
-          task_id: task.id,
-          progress,
-          completed_at: new Date().toISOString(),
-          awarded_credits: task.reward_credits,
-        },
-        { onConflict: "user_id,task_id" },
-      );
-      if (error) return toast.error(error.message);
-      const granted = await grantCredits(task.reward_credits, `Reward: ${task.title}`);
-      if (granted !== false)
-        toast.success(`+${task.reward_credits} credits added to your balance!`);
-      loadData();
-      return;
-    }
-
-    if (task.action_url) window.open(task.action_url, "_blank", "noopener,noreferrer");
-    const { error } = await supabase.from("user_reward_tasks").upsert(
-      {
-        user_id: userId,
-        task_id: task.id,
-        progress: 1,
-        completed_at: new Date().toISOString(),
-        awarded_credits: task.reward_credits,
-      },
-      { onConflict: "user_id,task_id" },
-    );
-    if (error) return toast.error(error.message);
-    const granted = await grantCredits(task.reward_credits, `Reward: ${task.title}`);
-    if (granted !== false) toast.success(`+${task.reward_credits} credits added to your balance!`);
-    loadData();
-  };
 
   const link = code ? `${window.location.origin}/ref/${code}` : "";
   const totalEarned = earns.reduce((s, x) => s + Number(x.amount), 0);
@@ -430,15 +313,12 @@ const ReferralsPage = () => {
     refs,
     earns,
     wds,
-    tasks,
-    userTasks,
     totalEarned,
     committed,
     available,
     signups,
     canWithdraw,
     justCopied,
-    claimTask,
     copyLink,
     shareLink,
     openPromoter,
@@ -500,13 +380,7 @@ const ReferralsPage = () => {
               <h1 className="text-center text-[15px] font-medium tracking-tight text-foreground">
                 {mobileTitle}
               </h1>
-              <button
-                onClick={() => setTasksMenuOpen(true)}
-                aria-label="Tasks menu"
-                className="grid h-10 w-10 place-items-center justify-self-end rounded-full border border-foreground/10 bg-white/[0.05] text-foreground transition active:scale-90"
-              >
-                <FileText className="h-[18px] w-[18px]" strokeWidth={2} />
-              </button>
+              <span aria-hidden className="h-10 w-10 justify-self-end" />
             </div>
           </header>
 
@@ -516,11 +390,6 @@ const ReferralsPage = () => {
             </div>
           </main>
         </div>
-        <TasksMenu
-          open={tasksMenuOpen}
-          onClose={() => setTasksMenuOpen(false)}
-          onQr={() => setQrOpen(true)}
-        />
         </MobilePushShell>
       )}
 
@@ -913,7 +782,7 @@ const DesktopReferralsChrome = ({
                 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
             }}
           >
-            <PortfolioReferralsHero onShareClick={onQr} />
+            {children}
 
           </div>
         </div>

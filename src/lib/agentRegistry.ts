@@ -1,6 +1,5 @@
 import {
   GraduationCap,
-  ShoppingCart,
   Search,
   Presentation,
   PenTool,
@@ -51,16 +50,6 @@ export const AGENTS: AgentDef[] = [
     category: "chat",
   },
   {
-    id: "shopping",
-    label: "Shopping",
-    mention: "@shopping",
-    icon: ShoppingCart,
-    color: "text-amber-400",
-    bg: "bg-amber-500/15",
-    description: "Product search & compare",
-    category: "chat",
-  },
-  {
     id: "deep-research",
     label: "Deep Research",
     mention: "@research",
@@ -75,7 +64,7 @@ export const AGENTS: AgentDef[] = [
 
   {
     id: "computer",
-    label: "Computer",
+    label: "Megsy Agent",
     mention: "@computer",
     icon: Bot,
     color: "text-slate-300",
@@ -150,13 +139,14 @@ export const AGENTS: AgentDef[] = [
     category: "images",
     models: [
       { id: "megsy-image", label: "Megsy Image", cost: 8 },
-      { id: "nano-banana-pro", label: "Nano Banana Pro", cost: 4 },
-      { id: "nano-banana-2", label: "Nano Banana 2", cost: 3 },
+      { id: "deapi-flux-schnell", label: "FLUX Schnell · deAPI", cost: 1 },
+      { id: "gpt-image-2", label: "GPT Image 2", cost: 6 },
+      { id: "nano-banana-2", label: "Nano Banana 2", cost: 7 },
+      { id: "seedream-4-5", label: "Seedream 4.5", cost: 4 },
+      { id: "grok-imagine-image", label: "Grok Imagine Image", cost: 4 },
+      { id: "nano-banana-pro", label: "Nano Banana Pro", cost: 14 },
       { id: "nano-banana", label: "Nano Banana", cost: 2 },
       { id: "gemini-3-pro-image", label: "Gemini 3 Pro Image", cost: 10 },
-      { id: "gpt-image-2", label: "GPT Image 2", cost: 6 },
-      { id: "gpt-5-image", label: "GPT-5 Image", cost: 12 },
-      { id: "gpt-5.4-image-2", label: "GPT-5.4 Image 2", cost: 14 },
     ],
   },
   {

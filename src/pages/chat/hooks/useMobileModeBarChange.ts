@@ -39,14 +39,19 @@ export function useMobileModeBarChange(
       if (m === "normal") {
         setChatMode("normal" as ChatMode);
         setSelectedAgent(null);
+        setSelectedModel(null);
         return;
       }
       if (m === "operator") {
+        setChatMode("operator" as ChatMode);
         setSelectedAgent(null);
+        setSelectedModel(null);
         tryActivateMegsyOs();
         return;
       }
       if (m === "docs") {
+        setChatMode("normal" as ChatMode);
+        setSelectedModel(null);
         if (selectedAgent?.id === "docs") {
           setSelectedAgent(null);
         } else {

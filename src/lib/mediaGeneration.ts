@@ -49,6 +49,7 @@ async function streamImageScene(
     body: JSON.stringify({
       stream: true,
       prompt: scene.prompt,
+      model_slug: modelSlug,
       partial_images: 3,
       quality: "low",
       ...(scene.reference_image_url

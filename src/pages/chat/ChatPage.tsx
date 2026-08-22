@@ -1423,6 +1423,7 @@ const ChatPage = () => {
   const { handleModeChange, handleSearchToggle } = useChatModeActions({
     chatMode,
     setChatMode,
+    setSelectedAgent,
     setStudyTimers,
     setStudyMusic,
     setSearchEnabled,
@@ -3272,16 +3273,12 @@ const ChatPage = () => {
                           if (savedCoderRunIdsRef.current.has(run.id)) return;
                           savedCoderRunIdsRef.current.add(run.id);
                           setCoderProjectFiles((prev) => ({ ...prev, [run.id]: files }));
-                          const projectText = files
-                            .map((file) => {
-                              const ext = (file.path.split(".").pop() || "txt").toLowerCase();
-                              return `\`\`\`${ext} ${file.path}\n${file.content}\n\`\`\``;
-                            })
-                            .join("\n\n");
+                          const fileNames = files.map((file) => file.path).filter(Boolean);
                           const content = [
                             "Megsy Coder finished the build.",
                             summary?.trim() ? summary.trim() : "",
-                            projectText,
+                            `${fileNames.length} project files are ready in the Coder panel.`,
+                            fileNames.length ? `Files: ${fileNames.join(", ")}` : "",
                           ]
                             .filter(Boolean)
                             .join("\n\n");

@@ -369,31 +369,6 @@ const AnimatedInput = ({
                   <div className="flex items-center px-0.5 pt-0.5 pb-1">{activeServiceSlot}</div>
                 </motion.div>
               )}
-              {activeAgentDef && (
-                <motion.div
-                  key={activeAgentDef.id}
-                  initial={{ opacity: 0, y: -4, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: "auto" }}
-                  exit={{ opacity: 0, y: -4, height: 0 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex items-center pt-1 pb-1.5">
-                    <span className="inline-flex items-center gap-1.5 h-9 pl-3 pr-1.5 rounded-full text-[12.5px] font-medium border border-foreground/20 bg-foreground/10 text-foreground">
-                      <activeAgentDef.icon className="w-3.5 h-3.5" />
-                      <span className="leading-none">{activeAgentDef.label}</span>
-                      <button
-                        type="button"
-                        onClick={onAgentRemove}
-                        className="ml-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-foreground/20 transition-colors"
-                        aria-label={`Remove ${activeAgentDef.label}`}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  </div>
-                </motion.div>
-              )}
             </AnimatePresence>
 
             <div className={`relative ${listening ? "hidden" : ""}`}>

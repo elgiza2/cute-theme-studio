@@ -2,8 +2,9 @@
  * Curated media-model policy.
  *
  * Image generation is intentionally limited to a small, well-understood set:
- *  - Paid flagships: Nano Banana 2 (Gemini image) and GPT Image 2
- *  - Free models served through the DeAPI provider
+ *  - Renderful-backed flagships: GPT Image 2, Nano Banana 2, Seedream 4.5,
+ *    and Grok Imagine Image
+ *  - Free/low-cost FLUX models served through the DeAPI provider
  *
  * Video keeps the full catalogue for now (the curated video list is coming).
  * The filters are non-destructive: if nothing matches the allowlist we fall
@@ -14,6 +15,9 @@ const IMAGE_ALLOW_PATTERNS: RegExp[] = [
   /nano[-\s_]?banana/i,
   /gemini.*image/i,
   /gpt[-\s_]?image/i,
+  /seedream/i,
+  /grok[-\s_]?imagine/i,
+  /flux/i,
   /deapi/i,
 ];
 

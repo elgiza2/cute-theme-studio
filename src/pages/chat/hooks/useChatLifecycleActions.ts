@@ -71,6 +71,7 @@ export function useChatNewChat(args: NewChatArgs) {
 interface ModeChangeArgs {
   chatMode: ChatMode;
   setChatMode: (v: ChatMode) => void;
+  setSelectedAgent: (v: null) => void;
   setStudyTimers: React.Dispatch<React.SetStateAction<any>>;
   setStudyMusic: React.Dispatch<React.SetStateAction<any>>;
   setSearchEnabled: (v: boolean) => void;
@@ -92,6 +93,8 @@ export function useChatModeActions(args: ModeChangeArgs) {
     (mode: ChatMode) => {
       const nextMode = args.chatMode === mode ? "normal" : mode;
       args.setChatMode(nextMode);
+      // A chat mode and an agent are mutually exclusive service states.
+      args.setSelectedAgent(null);
       if (nextMode !== "learning") {
         args.setStudyTimers([]);
         args.setStudyMusic({ kind: null } as StudyMusic);

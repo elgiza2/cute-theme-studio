@@ -152,6 +152,12 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
   const [tab, setTab] = useState<"plan" | "files" | "assets" | "logs" | "notes">("plan");
 
   const [collapsed, setCollapsed] = useState(false);
+
+  // Keep the live run visible for progress, then leave a quiet summary in the
+  // transcript once the project is complete instead of another large panel.
+  useEffect(() => {
+    if (status === "done" || status === "error") setCollapsed(true);
+  }, [status]);
   const [publishing, setPublishing] = useState(false);
   const [publishedId, setPublishedId] = useState<string | null>(null);
   const [canvasOpen, setCanvasOpen] = useState(false);
@@ -595,9 +601,9 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
 
 
   return (
-    <div className="theme-fixed coder-fixed my-4 w-full rounded-2xl border border-foreground/10 bg-neutral-950/80 shadow-lg overflow-hidden">
+    <div className="theme-fixed coder-fixed my-4 w-full overflow-hidden rounded-2xl border border-white/10 bg-[#111214] shadow-[0_18px_55px_rgba(0,0,0,0.28)]">
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-foreground/10 px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-white/[0.025] px-4 py-3">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
           {status === "running" ? (
             <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -646,19 +652,19 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
           </Button>
         )}
         {status === "done" && files.size > 0 && (
-          <Button size="sm" variant="ghost" onClick={() => setStudioOpen(true)} className="h-7 text-xs text-foreground/80">
+          <Button size="sm" variant="ghost" onClick={() => setStudioOpen(true)} className="hidden h-7 text-xs text-foreground/80 sm:inline-flex">
             <Pencil className="h-3.5 w-3.5 mr-1" />
             Studio
           </Button>
         )}
         {status === "done" && files.size > 0 && (
-          <Button size="sm" variant="ghost" onClick={handlePreview} disabled={publishing} className="h-7 text-xs text-foreground/80">
+          <Button size="sm" variant="ghost" onClick={handlePreview} disabled={publishing} className="hidden h-7 text-xs text-foreground/80 sm:inline-flex">
             {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5 mr-1" />}
             {publishing ? "Publishing…" : publishedId ? "Update site" : "Publish"}
           </Button>
         )}
         {status === "done" && files.size > 0 && canUndo && (
-          <Button aria-label="Undo last change" size="sm" variant="ghost" onClick={handleUndo} className="h-7 text-xs text-foreground/80" title="Undo last change">
+          <Button aria-label="Undo last change" size="sm" variant="ghost" onClick={handleUndo} className="hidden h-7 text-xs text-foreground/80 sm:inline-flex" title="Undo last change">
             <Undo2 className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -668,17 +674,17 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
           </Button>
         )}
         {status === "done" && files.size > 0 && previousFiles && previousFiles.length > 0 && (
-          <Button aria-label="View changes vs previous run" size="sm" variant="ghost" onClick={() => setDiffOpen(true)} className="h-7 text-xs text-foreground/80" title="View diff vs previous run">
+          <Button aria-label="View changes vs previous run" size="sm" variant="ghost" onClick={() => setDiffOpen(true)} className="hidden h-7 text-xs text-foreground/80 sm:inline-flex" title="View diff vs previous run">
             <GitCompare className="h-3.5 w-3.5" />
           </Button>
         )}
         {status === "done" && files.size > 0 && (
-          <Button aria-label="Open in StackBlitz" size="sm" variant="ghost" onClick={() => openInStackBlitz(projectFiles, prompt.slice(0, 40) || "megsy-project")} className="h-7 text-xs text-foreground/80" title="Open in StackBlitz (real Vite build)">
+          <Button aria-label="Open in StackBlitz" size="sm" variant="ghost" onClick={() => openInStackBlitz(projectFiles, prompt.slice(0, 40) || "megsy-project")} className="hidden h-7 text-xs text-foreground/80 sm:inline-flex" title="Open in StackBlitz (real Vite build)">
             <Zap className="h-3.5 w-3.5" />
           </Button>
         )}
         {status === "done" && files.size > 0 && (
-          <Button aria-label="Push project to GitHub" size="sm" variant="ghost" onClick={() => pushProjectToGithub(projectFiles, prompt.slice(0, 40) || "megsy-project")} className="h-7 text-xs text-foreground/80" title="Push to GitHub">
+          <Button aria-label="Push project to GitHub" size="sm" variant="ghost" onClick={() => pushProjectToGithub(projectFiles, prompt.slice(0, 40) || "megsy-project")} className="hidden h-7 text-xs text-foreground/80 sm:inline-flex" title="Push to GitHub">
             <Github className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -753,7 +759,7 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 text-xs text-foreground/70"
+                        className="hidden h-7 text-xs text-foreground/80 sm:inline-flex"
                         onClick={() => updateIntegration(ig.kind, "skipped")}
                       >
                         Skip
@@ -777,7 +783,7 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
           )}
 
           {/* Tabs */}
-          <div className="flex gap-1 border-b border-foreground/10 px-2 py-1.5">
+          <div className="flex gap-1 border-b border-white/10 px-3 py-2">
             {(
               [
                 { id: "plan", icon: ListTodo, label: "Plan", count: todos.length },
@@ -808,7 +814,7 @@ export default function InlineCoderRun({ runId, prompt, onClose, onFinish, previ
           </div>
 
           {/* Body */}
-          <div className="max-h-[420px] min-h-[180px] overflow-hidden">
+          <div className="max-h-[360px] min-h-[160px] overflow-hidden">
             {tab === "plan" && (
               <div className="h-full max-h-[420px] overflow-y-auto p-4">
                 {todos.length === 0 ? (

@@ -1,5 +1,16 @@
 import { memo } from "react";
-import { X, Code2, Image as ImageIcon, Video, Music, Microscope, Presentation, FileText, GraduationCap, ShoppingBag, Monitor } from "lucide-react";
+import {
+  X,
+  Code2,
+  Image as ImageIcon,
+  Video,
+  Music,
+  Microscope,
+  Presentation,
+  FileText,
+  GraduationCap,
+  Monitor,
+} from "lucide-react";
 import type { AgentDef } from "@/lib/agentRegistry";
 
 type ChipId =
@@ -12,7 +23,6 @@ type ChipId =
   | "slides-images"
   | "docs"
   | "learning"
-  | "shopping"
   | "operator";
 
 type ChipConfig = { label: string; color: string; Icon: React.ElementType };
@@ -27,8 +37,7 @@ const MODES: Partial<Record<ChipId, ChipConfig>> = {
   "slides-images": { label: "Slides", color: "var(--mode-slides)", Icon: Presentation },
   docs: { label: "Docs", color: "var(--mode-docs)", Icon: FileText },
   learning: { label: "Learning", color: "var(--mode-learning)", Icon: GraduationCap },
-  shopping: { label: "Shopping", color: "#f4b860", Icon: ShoppingBag },
-  operator: { label: "Computer Agent", color: "#8de1c1", Icon: Monitor },
+  operator: { label: "Megsy Agent", color: "#8de1c1", Icon: Monitor },
 };
 
 interface ActiveServicePillProps {
@@ -42,24 +51,30 @@ function ActiveServicePillImpl({ chatMode, selectedAgent, onClear }: ActiveServi
   const config: ChipConfig | null =
     selectedAgent?.id === "docs"
       ? MODES.docs ?? null
-      : modeConfig ?? (selectedAgent ? {
-          label: selectedAgent.label,
-          color: selectedAgent.color,
-          Icon: selectedAgent.icon,
-        } : null);
+      : modeConfig ??
+        (selectedAgent
+          ? {
+              label: selectedAgent.id === "computer" ? "Megsy Agent" : selectedAgent.label,
+              color: selectedAgent.color,
+              Icon: selectedAgent.icon,
+            }
+          : null);
 
   if (!config) return null;
   const { label, color, Icon } = config;
 
   return (
-    <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-foreground/70">
-      <Icon size={11} strokeWidth={2.4} style={{ color }} />
-      <span className="leading-none tracking-wide uppercase text-[10px]">{label}</span>
+    <div
+      data-service-indicator="true"
+      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-white/[0.14] bg-white/[0.06] px-2.5 text-[11px] font-semibold text-white/80"
+    >
+      <Icon size={12} strokeWidth={2.4} style={{ color }} />
+      <span className="leading-none">{label}</span>
       <button
         type="button"
         onClick={onClear}
         aria-label={`Clear ${label}`}
-        className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-foreground/50 transition-colors hover:bg-foreground/10 hover:text-foreground"
+        className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-white/45 transition-colors hover:bg-white/[0.12] hover:text-white"
       >
         <X size={10} strokeWidth={2.6} />
       </button>
