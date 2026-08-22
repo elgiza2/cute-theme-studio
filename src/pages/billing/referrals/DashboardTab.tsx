@@ -84,7 +84,7 @@ export default function DashboardTab() {
     const { data, error } = await db.rpc("redeem_referral_reward", { p_reward_id: selectedReward.id });
     const result = data as { success?: boolean; error?: string } | null;
     if (error || !result?.success) {
-      toast.error(result?.error || error?.message || "تعذر تسجيل الطلب حاليًا");
+      toast.error(result?.error || error?.message || "We could not submit your request right now");
       return;
     }
     setClaimed((current) => [...current, selectedReward.id]);
