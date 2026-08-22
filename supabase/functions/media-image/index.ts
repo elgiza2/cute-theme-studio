@@ -54,7 +54,7 @@ async function generateDeapi(secret: string, prompt: string, model?: string, wid
   const created = await requestJson("https://api.deapi.ai/api/v2/images/generations", {
     method: "POST",
     headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ prompt, model: model || "Flux_2_Klein_4B_BF16", width, height, steps: 4 }),
+    body: JSON.stringify({ prompt, model: model || "Flux1schnell", width, height, steps: 4, seed: Math.floor(Math.random() * 2_000_000_000) }),
   });
   const requestId = created?.request_id || created?.data?.request_id || created?.id;
   if (!requestId) throw Object.assign(new Error("deAPI did not return a request id"), { code: "MISSING_REQUEST_ID" });
@@ -65,7 +65,7 @@ async function generateDeapi(secret: string, prompt: string, model?: string, wid
     const data = result?.data || result;
     const status = String(data?.status || "").toLowerCase();
     const imageUrl = data?.result_url || data?.result || data?.results_alt_formats?.webp || data?.results_alt_formats?.jpg;
-    if (imageUrl && (status === "completed" || status === "complete" || !status)) return { requestId, imageUrl };
+    if (imageUrl && (["completed", "complete", "done", "succeeded"].includes(status) || !status)) return { requestId, imageUrl };
     if (["failed", "error", "cancelled"].includes(status)) {
       throw Object.assign(new Error(data?.error_message || data?.message || "deAPI generation failed"), { code: data?.error_code || "GENERATION_FAILED" });
     }
