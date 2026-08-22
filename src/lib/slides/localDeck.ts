@@ -7,7 +7,7 @@
 import type { SlideDeck, SlideData } from "@/components/chat/SlidesDeckCard";
 import { parseSlidesOutline } from "@/lib/slidesOutlineParser";
 import { findSlidesTemplate } from "@/lib/slidesTemplates";
-import { generateSlidesOutline } from "./generateOutline";
+import { generateSlidesOutline, inferRequestedSlideCount } from "./generateOutline";
 
 function paletteFor(templateId?: string): SlideDeck["palette"] {
   const tpl = findSlidesTemplate(templateId);
@@ -102,13 +102,15 @@ export function buildDeckFromPlan(
     });
   });
 
+  const requestedCount = inferRequestedSlideCount(plan.topic);
   const sources = plan.research?.sources?.slice(0, 6) || [];
-  if (sources.length) {
+  const remainingSlots = requestedCount ? Math.max(0, requestedCount - slides.length) : sources.length ? 1 : 0;
+  if (sources.length && remainingSlots > 0) {
     slides.push({
       type: "bullets",
       layout: "bullets",
       title: "Sources",
-      bullets: sources.map((s) => `${s.title} — ${s.url}`),
+      bullets: sources.slice(0, remainingSlots).map((s) => `${s.title} — ${s.url}`),
     });
   }
 

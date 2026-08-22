@@ -999,13 +999,11 @@ const ChatPage = () => {
         saveMessage,
         ownInsertedIdsRef,
         fetchSlidesNarration,
-        insertAssistantNarration,
         clearSlidesTimeout,
         slidesTimeoutsRef,
         slidesGenerationTokenRef,
         skipUserSave: true,
         brief: buildSlidesBrief(plan),
-        plan,
       });
       setIsLoading(false);
       setIsThinking(false);
@@ -2125,7 +2123,9 @@ const ChatPage = () => {
       setChatMode("slides");
     }
 
-    // ── Slides mode: plan first (outline + imported data), generate after approval ─
+    // ── Slides mode: send the initial request directly to Plus AI. The provider
+    // owns outline/content generation; chat-alibaba must not be a prerequisite
+    // because a chat outage should not block a real presentation artifact.
     if (chatMode === "slides" || chatMode === "slides-images" || shouldAutoStartSlides) {
       try {
         // Follow-up like "عدّل السلايد 3 …" edits one slide of the last plan
@@ -2140,15 +2140,8 @@ const ChatPage = () => {
           return;
         }
 
-        const docFiles = currentFiles.filter(
-          (f) => f.type === "file" && f.data && !f.data.startsWith("__"),
-        );
-        const attachedFilesText = docFiles
-          .map((f) => `### ${f.name}\n${f.data}`)
-          .join("\n\n")
-          .slice(0, 24000);
-
         await runSlidesTurn({
+
           userInput,
           localTurnId,
           chatUserId,
@@ -2164,13 +2157,9 @@ const ChatPage = () => {
           saveMessage,
           ownInsertedIdsRef,
           fetchSlidesNarration,
-          insertAssistantNarration,
           clearSlidesTimeout,
           slidesTimeoutsRef,
           slidesGenerationTokenRef,
-          planOnly: true,
-          attachedFilesText: attachedFilesText || undefined,
-          attachedFileMeta: docFiles.map((f) => ({ name: f.name, chars: f.data.length })),
         });
       } finally {
         isSubmittingRef.current = false;

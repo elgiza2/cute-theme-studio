@@ -1,11 +1,12 @@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { failStaleJob } from "@/lib/jobs/client";
-import { isStandardSlides, findSlidesTemplate } from "@/lib/slidesTemplates";
+import { findSlidesTemplate } from "@/lib/slidesTemplates";
 import { authorizePremiumSlide, FREE_PREMIUM_SLIDES_PER_DAY } from "@/lib/slidesQuota";
 import type { SlideDeck } from "@/components/chat/SlidesDeckCard";
 import type { Message } from "../chatConstants";
 import { SLIDES_CLIENT_TIMEOUT_MS, SLIDES_TIMEOUT_MESSAGE } from "../chatUtils";
+import { inferRequestedSlideCount } from "@/lib/slides/generateOutline";
 
 export interface RunSlidesTurnArgs {
   userInput: string;
@@ -29,30 +30,13 @@ export interface RunSlidesTurnArgs {
   ) => Promise<string | undefined>;
   ownInsertedIdsRef: React.MutableRefObject<Set<string>>;
   fetchSlidesNarration: (p: any) => Promise<string>;
-  insertAssistantNarration: (
-    cid: string | null | undefined,
-    text: string,
-    clientId?: string,
-    meta?: { slidesOutline?: import("@/lib/slidesOutlineParser").SlidesOutline } & Record<
-      string,
-      any
-    >,
-  ) => Promise<void>;
   clearSlidesTimeout: (jobId: string) => void;
   slidesTimeoutsRef: React.MutableRefObject<Record<string, number>>;
   slidesGenerationTokenRef: React.MutableRefObject<number>;
-  /** Stop after the planning step and wait for the user to approve the plan. */
-  planOnly?: boolean;
   /** Skip persisting the user message (used when resuming from the plan card). */
   skipUserSave?: boolean;
   /** Enriched brief (plan + research + imported data) sent to the generator. */
   brief?: string;
-  /** The approved plan; when present the deck is built from its reviewed content. */
-  plan?: import("@/lib/slides/planTypes").SlidesPlanState;
-  /** Extracted text from files the user attached to this turn. */
-  attachedFilesText?: string;
-  /** Names/sizes of imported files, shown on the plan card. */
-  attachedFileMeta?: { name: string; chars: number }[];
 }
 
 
@@ -78,16 +62,11 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
     saveMessage,
     ownInsertedIdsRef,
     fetchSlidesNarration,
-    insertAssistantNarration,
     clearSlidesTimeout,
     slidesTimeoutsRef,
     slidesGenerationTokenRef,
-    planOnly,
     skipUserSave,
     brief,
-    plan,
-    attachedFilesText,
-    attachedFileMeta,
   } = args;
 
 
@@ -95,6 +74,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
   const isSlidesRequestCancelled = () => slidesGenerationTokenRef.current !== slidesRequestToken;
 
   const slidesTopic = (userInput || "").trim();
+  const requestedSlideCount = inferRequestedSlideCount(slidesTopic);
   const genericSlideAsks =
     /^(Build|Build me|I want|make|create|generate|build|do)\s*(for me|me)?\s*(slides|presentation|deck)\s*[!.??]*$/i;
   if (!slidesTopic || slidesTopic.length < 6 || genericSlideAsks.test(slidesTopic)) {
@@ -146,84 +126,8 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
     const cid = await conversationPromise;
     await userSavePromise.catch(() => {});
 
-    const isArabic = /[\u0600-\u06FF]/.test(userInput) || !!navigator?.language?.startsWith("ar");
-
-    // ── Step 1: planning (+ imported file data) ──────────────────────────
-    if (planOnly) {
-      const { generateSlidesOutline } = await import("@/lib/slides/generateOutline");
-      const [narration, plan] = await Promise.all([
-        fetchSlidesNarration({
-          mode: "plan",
-          topic: slidesTopic,
-          kind: "slides",
-          title: slidesTopic.slice(0, 80),
-          language: "en",
-        }).catch(() => null),
-        generateSlidesOutline({
-          topic: slidesTopic,
-          language: "en",
-          userId: chatUserId || undefined,
-          sourceText: attachedFilesText,
-        }).catch(() => null),
-      ]);
-
-      if (isSlidesRequestCancelled()) return;
-
-      if (!plan) {
-        const msg = "Could not draft the outline. Please describe the topic again.";
-        await insertAssistantNarration(cid, msg, `assistant-${localTurnId}`);
-        setIsLoading(false);
-        setIsThinking(false);
-        resetToolUi();
-        return;
-      }
-
-      const planState: import("@/lib/slides/planTypes").SlidesPlanState = {
-        topic: slidesTopic,
-        templateId: slidesTemplate,
-        language: "en",
-        outline: plan.outline,
-        stage: "planning",
-        sourceText: attachedFilesText || undefined,
-        sourceFiles: attachedFileMeta?.length ? attachedFileMeta : undefined,
-      };
-
-      const introText =
-        narration ||
-        ("Here's the outline — review or edit it, then press Generate slides.");
-
-      let planMessageId: string | undefined;
-      if (cid) {
-        planMessageId = await saveMessage(cid, "assistant", introText, undefined, {
-          kind: "slidesPlan",
-          slidesPlan: planState,
-        });
-        if (planMessageId) ownInsertedIdsRef.current.add(planMessageId);
-        await supabase
-          .from("conversations")
-          .update({ updated_at: new Date().toISOString(), mode: "slides" } as any)
-          .eq("id", cid);
-      }
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.clientId === `assistant-${localTurnId}`
-            ? {
-                ...m,
-                id: planMessageId ?? m.id,
-                content: introText,
-                slidesPlan: planState,
-                slidesOutline: plan.outline,
-                mode: "slides",
-              }
-            : m,
-        ),
-      );
-      setIsLoading(false);
-      setIsThinking(false);
-      resetToolUi();
-      return;
-    }
-
+    // Slides generation is deliberately direct: Plus AI owns outline and
+    // content creation, so chat-alibaba availability cannot block the deck.
     if (isSlidesRequestCancelled()) return;
 
     let placeholderId: string | null = null;
@@ -251,140 +155,45 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
     }
     if (isSlidesRequestCancelled()) return;
 
-    // When the user approved a plan, the deck is built from that exact
-    // outline + reviewed content so nothing shown in the plan is lost.
-    if (plan?.outline?.steps?.length) {
-      const { buildDeckFromPlan } = await import("@/lib/slides/localDeck");
-      const planDeck = buildDeckFromPlan(plan);
-      if (planDeck) {
-        const tpl = findSlidesTemplate(planDeck.templateId || slidesTemplate);
-        const enrichedDeck: SlideDeck & { htmlSlug?: string; variant?: string } = tpl.htmlSlug
-          ? { ...planDeck, templateId: tpl.id, htmlSlug: tpl.htmlSlug, variant: tpl.variant }
-          : planDeck;
-        const finalContent =
-          plan.language === "ar"
-            ? `تم Rendering the deck (${enrichedDeck.slides.length} شرائح) حسب الخطة المعتمدة.`
-            : `Generated ${enrichedDeck.slides.length} slides from your approved plan.`;
-        if (placeholderId) {
-          try {
-            await supabase
-              .from("messages")
-              .update({
-                content: finalContent,
-                metadata: { kind: "slidesDeck", slidesDeck: enrichedDeck } as any,
-              })
-              .eq("id", placeholderId);
-          } catch {
-            /* best-effort */
-          }
-        }
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.clientId === `assistant-${localTurnId}` ||
-            (!!placeholderId && m.id === placeholderId)
-              ? {
-                  ...m,
-                  id: placeholderId ?? m.id,
-                  content: finalContent,
-                  slidesDeck: enrichedDeck,
-                  slidesJobId: undefined,
-                  slidesPendingTopic: undefined,
-                  mode: "slides",
-                }
-              : m,
-          ),
-        );
-        setIsLoading(false);
-        setIsThinking(false);
-        resetToolUi();
-        return;
-      }
-    }
-
-
-
-
     let narrative = "";
     let finalDeck: any = null;
     let finalStandardSlides: any = null;
 
-    const finishWithLocalDeck = async (fallbackText = ""): Promise<boolean> => {
-      let fallbackDeck: SlideDeck | null = null;
-      try {
-        const { buildLocalDeck } = await import("@/lib/slides/localDeck");
-        fallbackDeck = await buildLocalDeck({
-          topic: slidesTopic,
-          brief,
-          templateId: slidesTemplate,
-          language: "en",
-          userId: chatUserId || undefined,
-        });
-      } catch {
-        fallbackDeck = null;
-      }
-      if (!fallbackDeck) return false;
-
-      const tpl = findSlidesTemplate(fallbackDeck.templateId || slidesTemplate);
-      const enrichedDeck: SlideDeck & { htmlSlug?: string; variant?: string } = tpl.htmlSlug
-        ? { ...fallbackDeck, templateId: tpl.id, htmlSlug: tpl.htmlSlug, variant: tpl.variant }
-        : fallbackDeck;
-      const finalContent = (fallbackText.trim() || `Generated ${enrichedDeck.slides.length} slides.`).trim();
+    const setSlidesError = async (message: string) => {
+      const content = message.trim() || "Slides generation failed. Please try again.";
       if (placeholderId) {
-        void supabase
+        await supabase
           .from("messages")
           .update({
-            content: finalContent,
-            metadata: { kind: "slidesDeck", slidesDeck: enrichedDeck } as any,
+            content,
+            metadata: { kind: "slidesError", topic: userInput, templateId: slidesTemplate } as any,
           })
           .eq("id", placeholderId);
       }
       setMessages((prev) =>
         prev.map((m) =>
           m.clientId === `assistant-${localTurnId}` || (!!placeholderId && m.id === placeholderId)
-            ? {
-                ...m,
-                content: finalContent,
-                slidesDeck: enrichedDeck,
-                slidesJobId: undefined,
-                slidesPendingTopic: undefined,
-                mode: "slides",
-              }
+            ? { ...m, content, slidesJobId: undefined, slidesPendingTopic: undefined, mode: "slides" }
             : m,
         ),
       );
-      return true;
+      toast.error(content);
     };
 
     // All slide generation is routed through Plus AI Presentations API now.
     const { subscribeJob, startPlusAIPresentation } = await import("@/lib/jobs/client");
-    void isStandardSlides; // kept import for tree-shake friendliness; no longer used to branch
     let jobId: string;
     try {
-      ({ jobId } = await startPlusAIPresentation({
-        topic: brief || userInput,
-        templateId: slidesTemplate,
-        conversation_id: cid,
-        message_id: placeholderId,
-      }));
+        ({ jobId } = await startPlusAIPresentation({
+          topic: brief || userInput,
+          templateId: slidesTemplate,
+          conversation_id: cid,
+          message_id: placeholderId,
+          numberOfSlides: inferRequestedSlideCount(slidesTopic),
+        }));
     } catch (error) {
       const reason = error instanceof Error ? error.message : "The presentation service could not start.";
-      const usedLocalDeck = await finishWithLocalDeck();
-      if (!usedLocalDeck && placeholderId) {
-        const content = `Could not start the presentation: ${reason}`;
-        void supabase
-          .from("messages")
-          .update({ content, metadata: { kind: "slidesError", topic: userInput, templateId: slidesTemplate } as any })
-          .eq("id", placeholderId);
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.clientId === `assistant-${localTurnId}` || m.id === placeholderId
-              ? { ...m, content, slidesJobId: undefined, mode: "slides" }
-              : m,
-          ),
-        );
-      }
-      if (usedLocalDeck) toast.info("The presentation service was unavailable, so I rendered a local deck instead.");
-      else toast.error(`Slides error: ${reason}`);
+      await setSlidesError(`Could not start the Plus AI presentation: ${reason}`);
       return;
     }
     if (isSlidesRequestCancelled()) {
@@ -526,6 +335,13 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
               slides?: string[];
               slideCount?: number;
             };
+            const actualSlideCount = Number(ss.slideCount || ss.slides?.length || 0);
+            if (requestedSlideCount && actualSlideCount !== requestedSlideCount) {
+              await setSlidesError(`Plus AI returned ${actualSlideCount || "an unknown number of"} slides; the requested deck requires exactly ${requestedSlideCount}. Please regenerate.`);
+              unsub?.();
+              resolve();
+              return;
+            }
             const summaryText = await fetchSlidesNarration({
               mode: "summary",
               topic: slidesTopic,
@@ -533,7 +349,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
               title: ss.title,
               slideCount: ss.slideCount ?? ss.slides?.length,
             });
-            const finalContent = (narrative || summaryText || "").trim();
+            const finalContent = (narrative || summaryText || `Your presentation is ready with ${actualSlideCount || "the requested"} slides.`).trim();
             setMessages((prev) =>
               prev.map((m) =>
                 m.clientId === `assistant-${localTurnId}` ||
@@ -566,6 +382,13 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
             const enrichedDeck: SlideDeck & { htmlSlug?: string; variant?: string } = tpl.htmlSlug
               ? { ...finalDeck, templateId: tpl.id, htmlSlug: tpl.htmlSlug, variant: tpl.variant }
               : finalDeck;
+            const actualSlideCount = Array.isArray(enrichedDeck.slides) ? enrichedDeck.slides.length : 0;
+            if (requestedSlideCount && actualSlideCount !== requestedSlideCount) {
+              await setSlidesError(`Plus AI returned ${actualSlideCount || "an unknown number of"} slides; the requested deck requires exactly ${requestedSlideCount}. Please regenerate.`);
+              unsub?.();
+              resolve();
+              return;
+            }
             const summaryText = await fetchSlidesNarration({
               mode: "summary",
               topic: slidesTopic,
@@ -573,7 +396,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
               title: enrichedDeck.title || slidesTopic.slice(0, 80),
               slideCount: enrichedDeck.slides?.length,
             });
-            const finalContent = (narrative || summaryText || "").trim();
+            const finalContent = (narrative || summaryText || `Your presentation is ready with ${actualSlideCount || "the requested"} slides.`).trim();
             setMessages((prev) =>
               prev.map((m) =>
                 m.clientId === `assistant-${localTurnId}` ||
@@ -602,39 +425,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
               }
             }
           } else {
-            const usedLocalDeck = await finishWithLocalDeck(narrative);
-            if (usedLocalDeck) {
-              unsub?.();
-              resolve();
-              return;
-            }
-            if (placeholderId) {
-              void supabase
-                .from("messages")
-                .update({
-                  content: "Slides generation finished without a deck. Please try again.",
-                  metadata: {
-                    kind: "slidesError",
-                    topic: userInput,
-                    templateId: slidesTemplate,
-                  } as any,
-                })
-                .eq("id", placeholderId);
-            }
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.clientId === `assistant-${localTurnId}` ||
-                (!!placeholderId && m.id === placeholderId)
-                  ? {
-                      ...m,
-                      content: "Slides generation finished without a deck. Please try again.",
-                      slidesJobId: undefined,
-                      mode: "slides",
-                    }
-                  : m,
-              ),
-            );
-            toast.error("Slides generation failed");
+            await setSlidesError("Plus AI finished without a presentation artifact. Please regenerate.");
           }
           unsub?.();
           resolve();
@@ -648,42 +439,7 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
           }
           clearSlidesTimeout(jobId);
 
-          // The external provider can be unavailable (401 / quota). Render a
-          // local deck before showing the user a terminal error.
-          const usedLocalDeck = await finishWithLocalDeck(narrative);
-          if (usedLocalDeck) {
-            unsub?.();
-            resolve();
-            return;
-          }
-
-          if (placeholderId) {
-            void supabase
-              .from("messages")
-              .update({
-                content: `Could not create the presentation: ${msg}`,
-                metadata: {
-                  kind: "slidesError",
-                  topic: userInput,
-                  templateId: slidesTemplate,
-                } as any,
-              })
-              .eq("id", placeholderId);
-          }
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.clientId === `assistant-${localTurnId}` ||
-              (!!placeholderId && m.id === placeholderId)
-                ? {
-                    ...m,
-                    content: `Could not create the presentation: ${msg}`,
-                    slidesJobId: undefined,
-                    mode: "slides",
-                  }
-                : m,
-            ),
-          );
-          toast.error(`Slides error: ${msg}`);
+          await setSlidesError(`Could not create the Plus AI presentation: ${msg}`);
           unsub?.();
           resolve();
         },
@@ -701,38 +457,8 @@ export async function runSlidesTurn(args: RunSlidesTurnArgs): Promise<void> {
           } catch {
             /* ignore */
           }
-          const partial = (row.stream_text || narrative || "").trim();
-          const usedLocalDeck = await finishWithLocalDeck(partial);
-          if (usedLocalDeck) {
-            unsub?.();
-            resolve();
-            return;
-          }
-          if (placeholderId) {
-            void supabase
-              .from("messages")
-              .update({
-                content: partial || "Slides generation stopped unexpectedly. Please try again.",
-                metadata: {
-                  kind: "slidesError",
-                  topic: userInput,
-                  templateId: slidesTemplate,
-                } as any,
-              })
-              .eq("id", placeholderId);
-          }
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.clientId === `assistant-${localTurnId}`
-                ? {
-                    ...m,
-                    content: partial || "Slides generation stopped unexpectedly. Please try again.",
-                    slidesJobId: undefined,
-                  }
-                : m,
-            ),
-          );
-          toast.error("Slides generation stopped unexpectedly. Please try again.");
+          void row;
+          await setSlidesError("Plus AI generation stopped before a presentation artifact was ready. Please try again.");
           unsub?.();
           resolve();
         },

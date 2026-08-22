@@ -4,6 +4,22 @@ import type { SlidesSlideContent } from "./planTypes";
 
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
+/**
+ * Reads an explicit slide count from natural-language requests such as
+ * "create 6 slides" or "a 6-slide deck". The count is intentionally bounded
+ * to the range supported by the UI/provider contract.
+ */
+export function inferRequestedSlideCount(topic: string): number | undefined {
+  const match = topic.match(/(?:\b(\d{1,2})\s*[- ]?slides?\b|\bslides?\b[^\d]{0,12}\b(\d{1,2})\b)/i);
+  const value = Number(match?.[1] || match?.[2] || 0);
+  return value >= 2 && value <= 30 ? value : undefined;
+}
+
+function normalizeOutline(outline: SlidesOutline, requestedCount?: number): SlidesOutline {
+  if (!requestedCount || outline.steps.length <= requestedCount) return outline;
+  return { ...outline, steps: outline.steps.slice(0, requestedCount) };
+}
+
 async function ask(params: {
   prompt: string;
   userId?: string;
@@ -42,7 +58,7 @@ export async function generateSlidesOutline(params: {
   /** Deep-research report to ground the outline on. */
   researchText?: string;
 }): Promise<{ text: string; outline: SlidesOutline } | null> {
-  const count = params.slideCount ?? 8;
+  const count = params.slideCount ?? inferRequestedSlideCount(params.topic) ?? 8;
   const ar = params.language === "ar";
 
   const grounding: string[] = [];
@@ -98,7 +114,7 @@ Rules: each slide has a clear title and 2-4 short bullets (max 12 words each). O
 
   const trimmed = text.trim();
   if (!trimmed) return null;
-  const outline = parseSlidesOutline(trimmed);
+  const outline = normalizeOutline(parseSlidesOutline(trimmed), count);
   if (!outline.steps.length) return null;
   return { text: trimmed, outline };
 }

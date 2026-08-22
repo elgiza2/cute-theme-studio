@@ -16,7 +16,12 @@ import { createJob, loadJobForResume, runInBackground, JobWriter } from "../_sha
 import { getLLM, getLovableGateway } from "../_shared/llm-router.ts";
 
 const PLUS_AI_API = "https://api.plusdocs.com/r/v0/presentation";
-const PLUS_AI_KEY = Deno.env.get("PLUS_AI_API_KEY") || Deno.env.get("PLUSAI_API_KEY") || "";
+// Supabase projects may contain either spelling. Keep the values server-side and
+// try each configured alias on a 401/403 so a stale duplicate cannot block Slides.
+const PLUS_AI_KEYS = Array.from(
+  new Set([Deno.env.get("PLUS_AI_API_KEY"), Deno.env.get("PLUSAI_API_KEY")].filter(Boolean) as string[]),
+);
+let activePlusAiKey = PLUS_AI_KEYS[0] || "";
 
 // Rough language detector so we can pass ISO-639-1 to Plus AI.
 function detectLang(text: string): string {
@@ -158,15 +163,26 @@ async function narrateWithLLM(
 
 
 async function plusFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  if (!PLUS_AI_KEY) throw new Error("PLUS_AI_API_KEY is not configured");
-  return await fetch(path.startsWith("http") ? path : `${PLUS_AI_API}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${PLUS_AI_KEY}`,
-      ...(init.headers || {}),
-    },
-  });
+  if (!activePlusAiKey) throw new Error("Plus AI API key is not configured on the server");
+  const url = path.startsWith("http") ? path : `${PLUS_AI_API}${path}`;
+  const candidates = [activePlusAiKey, ...PLUS_AI_KEYS.filter((key) => key !== activePlusAiKey)];
+  let lastResponse: Response | null = null;
+  for (const key of candidates) {
+    const response = await fetch(url, {
+      ...init,
+      headers: {
+        ...(init.headers || {}),
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+    });
+    lastResponse = response;
+    if (response.status !== 401 && response.status !== 403) {
+      activePlusAiKey = key;
+      return response;
+    }
+  }
+  return lastResponse!;
 }
 
 interface CreateBody {
@@ -262,9 +278,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (!PLUS_AI_KEY) {
+  if (!PLUS_AI_KEYS.length) {
     return new Response(
-      JSON.stringify({ error: "PLUS_AI_API_KEY is not configured on the server" }),
+      JSON.stringify({ error: "Plus AI API key is not configured on the server" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

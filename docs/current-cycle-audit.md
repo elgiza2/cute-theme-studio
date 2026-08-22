@@ -265,3 +265,37 @@ After the first wait, the old deployment still showed `Thinking deeply…` and n
 ### Live result — Integrations read-only final on stale deployment
 
 The old deployment returned a concrete read-only inventory: GitHub was reported `Connected`; Google Forms was `Not Found` for a dummy form ID; and Google Sheets returned `Authentication Error` due to an owner/auth mismatch. No message, record, setting, or connector mutation was performed. Integrations result: **Passed for safe inventory on stale deployment, with two connector failures**; quality: **Below A+** because the response exposed an unhelpful dummy-form diagnostic and did not provide actionable connector IDs/links. This is not proof of the current GitHub source.
+
+### Provider contract verification — official docs
+
+The official deAPI queue documentation confirms that image jobs are submitted to `POST /api/v2/{resource}/{operation}`, return a `request_id`, and are polled via `/api/v2/jobs/{id}`. Terminal status is documented as `done` or `error`, with `result_url` or `result` used for the completed output: [deAPI execution modes](https://docs.deapi.ai/execution-modes-and-integrations/execution-modes-and-http-queue) and [deAPI HTTP queue example](https://docs.deapi.ai/execution-modes-and-integrations/n8n-integration).
+
+The official Renderful API documentation confirms `POST https://api.renderful.ai/api/v1/generations` with `type: "text-to-image"`, `model`, and `prompt`, followed by `GET /api/v1/generations/:id`. The documented terminal states are `completed` and `failed`, and successful `outputs` contains result URLs: [Renderful API documentation](https://renderful.ai/docs).
+
+### Backend drift confirmed
+
+The deployed `media-image` function is version 1018 and its source matches the local implementation before the current patch. Its documented response handling accepted only a narrow set of deAPI/Renderful output shapes; the local patch now recursively normalizes URL-bearing fields and accepts documented terminal aliases (`completed`, `complete`, `done`, `succeeded`). The deployed function reports `verify_jwt: false`; it still uses the service-role key internally and provider key RPCs, so no provider secret was copied into source.
+
+The deployed `media-video` and `media-video-poll` sources were absent from this checkout and have been restored locally, together with their relative shared helpers, to make the video/music backend reproducible and reviewable. No deployment has been claimed yet.
+
+### Post-deploy Images retest
+
+After deploying `media-image` version 1019, the authenticated UI was retested with a fresh editorial still-life prompt. The request reached the chat and remained in `Thinking deeply…`; no image, URL, or explicit provider error appeared during the observation window. This is **not a pass**. The output-normalization patch is deployed, but end-to-end image generation remains **Failed/Blocked pending provider/RPC evidence**; no artifact was created in this retest.
+
+Network inspection during the post-deploy Images retest showed requests to both `chat-alibaba` and `media-image` on the Supabase project, but no response status or body was exposed. The old frontend therefore cannot isolate the current source media flow; the retest remains non-passing and is not used as proof of the local UI implementation.
+
+- 2026-08-22 post-poll deploy video test: old authenticated Vercel UI started a 5-second single-shot request after media-video-poll v415 deployment. At ~6 seconds the UI still showed `Thinking deeply…` and no video element or playable URL; this is pending, not a pass. The old deployment is legacy evidence only.
+
+- 2026-08-22 after chat-alibaba v466 deploy: the legacy authenticated UI sent two plain Chat prompts. Both returned `Connection error. Please check your internet and try again.` and no assistant artifact. Supabase logs showed chat-alibaba function id `1868cb76-b7d7-4218-9a04-322dfa13d9fa` booting on version 466; the first post-deploy attempt also showed an EarlyDrop event. Chat remains failed/unverified; no model or provider success is claimed.
+- 2026-08-22 source restoration: chat-alibaba plus missing `skillsResolver` and `intentClassifier` were restored from the deployed function source into the repository after a redacted secret-like scan found no hard-coded credentials. Kimi/Moonshot aliases were replaced with current DashScope Qwen Function Calling models based on official Alibaba documentation; chat-alibaba v466 is the resulting deployment.
+
+- 2026-08-22 after chat-alibaba v467 DB-key fallback deploy: the authenticated legacy UI retried Chat and again returned `Connection error. Please check your internet and try again.` with no assistant artifact. This remains Failed/No output; the old UI may be stale, but the shared backend path also needs a direct runtime diagnosis before claiming repair.
+
+- External source evidence: Alibaba Cloud Model Studio documentation at https://www.alibabacloud.com/help/en/model-studio/kimi-api states that Moonshot-Kimi-K2-Instruct and kimi-k2-thinking were retired on July 9, 2026 and recommends current Qwen models; its OpenAI compatibility documentation at https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope documents OpenAI-compatible Function Calling with supported Qwen/Kimi families. The deployed chat routing was updated accordingly instead of retaining the retired moonshot-v1 aliases.
+
+
+### Slides-only repair — Plus AI direct path
+
+The Slides source was narrowed to Plus AI only. The initial request now bypasses chat-alibaba outline generation and calls `chat-slides-stream` directly with `provider: plusai` and the inferred `numberOfSlides`; approved-plan and stale/error paths no longer turn a local deck or partial text into a success artifact. `chat-slides-stream` was deployed as v1408, then v1409 with server-side support for both configured secret aliases `PLUS_AI_API_KEY` and `PLUSAI_API_KEY`, retrying an alternate alias only on 401/403 without exposing values.
+
+Two authenticated endpoint tests requested exactly six slides. Both jobs were accepted with HTTP 200 and a job ID, then terminated at `phase=outline` with `status=error`, no `standardSlides`, no URL, and zero slides. A sanitized database classification for both was `plusai_auth_rejected`; no raw provider error or secret was read. Slides therefore remains **Blocked**, not Passed/A+, until the Supabase Plus AI secret is replaced with a valid active Plus organization API key. The official contract documents POST `pollingUrl` and completed GET `slides` plus downloadable `url`: https://guide.plusai.com/apis-for-presentations/presentations-api
