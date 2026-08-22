@@ -28,7 +28,6 @@ const QRCodeSVG = lazy(() =>
   import("qrcode.react").then((m) => ({ default: m.QRCodeSVG })),
 );
 import { PortfolioReferralsHero } from "@/pages/billing/referrals/PortfolioReferralsHero";
-import MoonshotHero from "@/pages/billing/referrals/mobile/MoonshotHero";
 import TasksMenu from "@/pages/billing/referrals/mobile/TasksMenu";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -512,13 +511,9 @@ const ReferralsPage = () => {
           </header>
 
           <main className="w-full pb-24">
-            {isMobileSubRoute ? (
-              <div className="px-4 py-4">
-                <Outlet />
-              </div>
-            ) : (
-              <MoonshotHero />
-            )}
+            <div className="px-0 py-0">
+              <Outlet />
+            </div>
           </main>
         </div>
         <TasksMenu
