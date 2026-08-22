@@ -2,7 +2,6 @@ import { Suspense, lazy, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatMessage from "@/components/chat/ChatMessage";
 import ResearchJobBubble from "@/components/research/ResearchJobBubble";
-import { DeepResearchProgress } from "@/components/chat/DeepResearchProgress";
 import { SlidesJobProgress } from "@/components/chat/SlidesJobProgress";
 import { VideoJobProgress } from "@/components/chat/VideoJobProgress";
 import MediaGenerationSkeleton from "@/components/chat/MediaGenerationSkeleton";
@@ -291,7 +290,6 @@ const ChatMessageItemImpl = ({
       )}
       {msg.role === "assistant" && msg.researchJobId && (
         <div className="px-3 md:px-12">
-          <DeepResearchProgress jobId={msg.researchJobId} className="mb-2" />
           <ResearchJobBubble
             jobId={msg.researchJobId}
             conversationId={conversationId}
