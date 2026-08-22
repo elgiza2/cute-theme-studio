@@ -81,3 +81,4 @@ export const KnowledgePage = lazy(() => import("@/pages/settings/KnowledgePage")
 
 /* ── Hidden admin ─────────────────────────────────────────────── */
 export const ManusKeysPage = lazy(() => import("@/pages/admin/ManusKeysPage"));
+export const ImageProviderKeysPage = lazy(() => import("@/pages/admin/ImageProviderKeysPage"));

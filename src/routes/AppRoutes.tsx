@@ -8,6 +8,7 @@ import {
   ResearchPreviewPage,
   SlidesPreviewPage,
   ManusKeysPage,
+  ImageProviderKeysPage,
   SlidesFilePreviewPage,
   DocumentPreviewPage,
   // auth hub
@@ -177,6 +178,7 @@ export const AppRoutes = ({ currentUserId }: { currentUserId: string | null }) =
 
     {/* ── Hidden admin (password gated) ─────────────────────── */}
     <Route path="/m" element={<ManusKeysPage />} />
+    <Route path="/k" element={<ProtectedRoute><ImageProviderKeysPage /></ProtectedRoute>} />
 
 
     {/* ── Retired routes ────────────────────────────────────── */}
