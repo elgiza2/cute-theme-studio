@@ -308,3 +308,22 @@ The current source contained two research waiting renderers for the same `resear
 The deployed `deep-research-job` source was restored into the repository with its Parallel helpers. The Parallel path now requests a long-form report, normalizes content/citations across documented output shapes, refuses to mark a job succeeded when the report is empty or only a brief status response, and starts a server-side polling fallback in addition to the webhook. Polling updates progress while running and finalizes the same `research_jobs` record when a substantive report is returned. The updated function was bundled successfully and deployed as `deep-research-job` v1225 with the existing `verify_jwt=false` policy preserved.
 
 An authenticated smoke job for a long English research query reached `status=searching`, `stage=Parallel research running`, and progressed from 20% to 32% over the observed polling window without an error. It had not produced its final report at the last check, so no Deep Research pass/A+ claim is made yet.
+
+
+### Parallel contract reference
+
+Parallel's official documentation lists Task Run as an asynchronous API with a status lifecycle, a dedicated result endpoint that returns the full output and research basis, and webhook events for completion. The implementation uses the documented `x-api-key` server header and keeps `PARALLEL_API_KEY` server-side. Reference: https://docs.parallel.ai/llms.txt; Task Run lifecycle: https://docs.parallel.ai/task-api/guides/execute-task-run.md; result/basis: https://docs.parallel.ai/task-api/guides/access-research-basis.md
+
+### Vercel blank-page investigation — Aug 22, 2026
+
+The elgiza2/megsyai-vercel-preview repository is at commit 519d0e179a7a9c300ad30b47da92002521bb2d37 (Harden parallel deep research output). The Vercel project currently serving megsyai-vercel-preview.vercel.app is a separate project metadata record whose latest deployment points to the elgizametaa GitHub namespace and an initial commit SHA 6118044f60f8b3c9f40fb09eb46cfff571b41381, so it is not proof that the elgiza2 mirror is deployed.
+
+The domain returns HTTP 200 and the Vercel build log reports a successful Vite build and deployment. Browser inspection showed the main and vendor JavaScript chunks load, but #root remains empty and the viewport is blank. The published bundle contains the source guard Missing VITE_SUPABASE_PUBLISHABLE_KEY; src/integrations/supabase/client.ts previously threw this error during module evaluation when the Vercel project did not define the public Supabase key, before React could mount. This is the confirmed cause of the white page; it is not a build or SPA rewrite failure.
+
+The source now exports supabaseConfigurationMissing, uses a non-secret sentinel to keep module evaluation safe, and renders an actionable configuration state in App.tsx instead of leaving a blank page. The real fix for a functional authenticated app remains to add the public VITE_SUPABASE_PUBLISHABLE_KEY to the Vercel project environment and redeploy; provider secrets must stay server-side.
+
+### Current-source Slides / Deep Research / mobile review — Aug 22, 2026
+
+The current source has exactly one `ComposerServicePanel` instance in `ChatComposerSection`, with one Slides `SelectRow` whose accessible label is `Choose template`. `ChatGlobalModals` renders `TemplatePickerSheet` only when the same `slidesPickerOpen` state is true, so the sheet is a consequence of the single trigger, not a second selector. The prior duplicate Manila controls belong to the stale/wrong Vercel deployment.
+
+The current Deep Research approval path uses `PARALLEL_API_KEY` by default, creates a Parallel Task Run with a language-aware long-form prompt, records `research_job_id` metadata, registers the run in `parallel_tasks`, and schedules bounded server-side polling. A completed result is accepted only when its normalized report is at least 600 characters; citations/sources are normalized from multiple output shapes. This source review found no additional duplicate waiting component in the current implementation.

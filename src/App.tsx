@@ -11,7 +11,7 @@ import MarketingTypographyScope from "@/components/common/MarketingTypographySco
 import { PromoBannerProvider } from "@/components/promo/PromoBannerContext";
 import { ZoneProvider } from "@/contexts/ZoneContext";
 import { ConfirmProvider } from "@/components/common/ConfirmDialog";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseConfigurationMissing } from "@/integrations/supabase/client";
 import { subscribeAuthEvents } from "@/lib/authStore";
 import { clearQueryPersistence } from "@/lib/queryPersist";
 import { clearAllSnapshots } from "@/lib/pageSnapshot";
@@ -145,6 +145,23 @@ const useAuthSession = () => {
 const App = () => {
   useAppChrome();
   const currentUserId = useAuthSession();
+
+  if (supabaseConfigurationMissing) {
+    return (
+      <main
+        className="min-h-dvh bg-background text-foreground grid place-items-center p-6"
+        data-app-config-error="supabase-public-key"
+      >
+        <section className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Megsy AI</p>
+          <h1 className="mt-3 text-2xl font-semibold">This deployment needs one public setting</h1>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Add <code className="rounded bg-muted px-1.5 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to the Vercel project environment, then redeploy. No provider secret belongs in the browser.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <TranslationWrapper>

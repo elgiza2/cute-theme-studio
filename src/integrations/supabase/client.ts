@@ -3,11 +3,15 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://ltgampdtawuefwwayncx.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+const configuredPublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_PUBLISHABLE_KEY) {
-  throw new Error("Missing VITE_SUPABASE_PUBLISHABLE_KEY");
-}
+// Never abort module evaluation when a deployment forgot the public Supabase
+// env. A thrown import leaves #root empty and gives users a white page with no
+// actionable message. The app can render its auth/configuration state while
+// Vercel settings are corrected; real API calls still fail closed with the
+// non-secret sentinel below rather than exposing or inventing a credential.
+export const supabaseConfigurationMissing = !configuredPublishableKey;
+const SUPABASE_PUBLISHABLE_KEY = configuredPublishableKey || "missing-publishable-key";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
